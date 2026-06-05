@@ -1,0 +1,22 @@
+#!/bin/ape/sh
+
+args=""
+strip=false
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --strip-trailing-cr)
+      strip=true
+      ;;
+    *)
+      args="$args $1"
+      ;;
+  esac
+  shift
+done
+
+# Plan 9 diff does not support GNU diff's --strip-trailing-cr option.
+# ocamltest uses it only when producing diagnostics after its internal
+# comparison has already found a mismatch, so keeping Plan 9 diff output is
+# still useful and avoids turning output differences into usage text.
+exec /bin/diff $args

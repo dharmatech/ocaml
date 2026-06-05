@@ -1,0 +1,15 @@
+#!/bin/ape/sh
+case "$1" in
+  -1)
+    shift
+    sed 1q "$@"
+    ;;
+  -n)
+    n="$2"
+    shift 2
+    sed "${n}q" "$@"
+    ;;
+  *)
+    sed 1q "$@"
+    ;;
+esac

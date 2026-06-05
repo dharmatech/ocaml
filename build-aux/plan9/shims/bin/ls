@@ -1,0 +1,13 @@
+#!/bin/ape/sh
+case "$1" in
+  -di|-id)
+    shift
+    if [ $# -eq 0 ]; then set -- .; fi
+    for f do
+      echo "0 $f"
+    done
+    ;;
+  *)
+    exec /bin/ls "$@"
+    ;;
+esac

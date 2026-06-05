@@ -1,0 +1,2 @@
+#!/bin/ape/sh
+exec /tmp/gmake-shims/grep "$@"

@@ -1,0 +1,23 @@
+#!/bin/ape/sh
+count=false
+quiet=false
+invert=false
+pat=""
+files=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --version) echo "GNU grep shim"; exit 0;;
+    -e) shift; if [ -z "$pat" ]; then pat="$1"; else pat="$pat|$1"; fi;;
+    -c) count=true;;
+    -q|-s) quiet=true;;
+    -v) invert=true;;
+    -E) ;;
+    -*) ;;
+    *) if [ -z "$pat" ]; then pat="$1"; else files="$files $1"; fi;;
+  esac
+  shift
+done
+if [ -z "$pat" ]; then pat=".*"; fi
+if [ -n "$files" ]; then cat $files; else cat; fi | awk -v pat="$pat" -v quiet="$quiet" -v count="$count" -v invert="$invert" '
+{ m = ($0 ~ pat); if (invert == "true") m = !m; if (m) { found = 1; n++; if (quiet != "true" && count != "true") print } }
+END { if (count == "true") print n + 0; exit found ? 0 : 1 }'

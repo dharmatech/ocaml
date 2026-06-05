@@ -1,0 +1,10 @@
+#!/bin/ape/sh
+args=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -f) ;;
+    *) args="$args $1";;
+  esac
+  shift
+done
+exec /bin/cp $args

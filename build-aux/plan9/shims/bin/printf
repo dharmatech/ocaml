@@ -1,0 +1,21 @@
+#!/bin/ape/sh
+fmt="$1"
+shift
+case "$fmt" in
+  "%s\n"|"%s\\n"|"%b\n"|"%b\\n")
+    for arg do
+      echo "$arg"
+    done
+    ;;
+  "%s"|"%b")
+    if [ $# -gt 0 ]; then
+      echo -n "$1"
+    fi
+    ;;
+  *%d*)
+    awk -v fmt="$fmt" -v a1="${1:-0}" -v a2="${2:-0}" -v a3="${3:-0}" 'BEGIN { printf fmt, a1 + 0, a2 + 0, a3 + 0 }'
+    ;;
+  *)
+    echo "$@"
+    ;;
+esac

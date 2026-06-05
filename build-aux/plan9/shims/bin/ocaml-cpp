@@ -1,0 +1,15 @@
+#!/bin/ape/sh
+tmp=/tmp/ocaml-cpp.$$
+
+c89 -E "$@" >$tmp
+status=$?
+if [ $status -ne 0 ]; then
+  cat $tmp
+  rm -f $tmp
+  exit $status
+fi
+
+sed 's/^#line /# /' $tmp
+status=$?
+rm -f $tmp
+exit $status
