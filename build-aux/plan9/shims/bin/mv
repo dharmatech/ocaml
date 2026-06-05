@@ -1,0 +1,11 @@
+#!/bin/sh
+
+while test $# -gt 0; do
+  case "$1" in
+    -f) shift ;;
+    --) shift; break ;;
+    *) break ;;
+  esac
+done
+
+exec /bin/mv ${1+"$@"}

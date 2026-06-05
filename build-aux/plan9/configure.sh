@@ -27,4 +27,4 @@ exec ./configure \
   --disable-ocamltest \
   --disable-dependency-generation \
   --enable-imprecise-c99-float-ops \
-  "$@"
+  ${1+"$@"}

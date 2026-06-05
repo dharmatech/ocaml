@@ -85,3 +85,5 @@ The wrapper honors `MAKE` if it is already set; otherwise it uses
 
 The scripts under `shims/bin` are compatibility shims for commands used by the
 configure and build machinery. They should not contain machine-local paths.
+These shims intentionally implement only the flags and behavior needed by this
+build.
