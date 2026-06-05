@@ -1999,6 +1999,9 @@ oc_cppflags="$common_cppflags $internal_cppflags"
 ocamlc_cflags="$common_cflags $sharedlib_cflags \$(CFLAGS)"
 ocamlc_cppflags="$common_cppflags \$(CPPFLAGS)"
 cclibs="$cclibs $mathlib"
+AS_CASE([$host],
+  [*-*-plan9],
+    [cclibs="$cclibs -l9"])
 
 AS_CASE([$host],
   [*-*-mingw32],

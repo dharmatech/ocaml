@@ -17843,6 +17843,12 @@ oc_cppflags="$common_cppflags $internal_cppflags"
 ocamlc_cflags="$common_cflags $sharedlib_cflags \$(CFLAGS)"
 ocamlc_cppflags="$common_cppflags \$(CPPFLAGS)"
 cclibs="$cclibs $mathlib"
+case $host in #(
+  *-*-plan9) :
+    cclibs="$cclibs -l9" ;; #(
+  *) :
+     ;;
+esac
 
 case $host in #(
   *-*-mingw32) :
