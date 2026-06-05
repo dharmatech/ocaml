@@ -57,24 +57,24 @@ gmake world
 
 ## Install
 
-Use an absolute path to `install-sh` when installing. Some subdirectory install
-rules run with a different working directory, so a relative `build-aux/install-sh`
-does not resolve correctly on Plan 9.
+Use the Plan 9 install wrapper from the repository root:
 
 ```sh
-INSTALL_SH=$PWD/build-aux/install-sh
-gmake \
-  INSTALL="$INSTALL_SH -c" \
-  INSTALL_PROG="$INSTALL_SH -c" \
-  INSTALL_DATA="$INSTALL_SH -c -m 644" \
-  INSTALL_SOURCE_ARTIFACTS=false \
-  LN="ln -s -f" \
-  install
+build-aux/plan9/install.sh
 ```
 
-`INSTALL_SOURCE_ARTIFACTS=false` avoids installing source artifacts that are not
-needed for the current bytecode-focused Plan 9 build. `LN="ln -s -f"` matches the
-link behavior expected by the OCaml install rules.
+The wrapper sets the repo-local shim `PATH` and passes the Plan 9-specific GNU
+Make overrides needed by the current port:
+
+- an absolute path to `build-aux/install-sh`, because some subdirectory install
+  rules run with a different working directory
+- `INSTALL_SOURCE_ARTIFACTS=false`, because source artifacts are not needed for
+  the current bytecode-focused Plan 9 build
+- `LN="ln -s -f"`, matching the link behavior expected by the OCaml install
+  rules
+
+The wrapper honors `MAKE` if it is already set; otherwise it uses
+`/usr/glenda/lib/unix/bin/gmake`.
 
 ## Shims
 
