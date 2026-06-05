@@ -1,5 +1,6 @@
 (* TEST
    modules = "cmstub.c cmmain.c"
+   custom_runtime_main = "false"
 *)
 
 (* OCaml part of the code *)

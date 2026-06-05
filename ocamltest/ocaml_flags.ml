@@ -31,6 +31,21 @@ let runtime_variant_flags () = match Ocaml_files.runtime_variant() with
   | Ocaml_files.Debug -> " -runtime-variant d"
   | Ocaml_files.Instrumented -> " -runtime-variant i"
 
+let custom_runtime_main_object () =
+  let main_object = Filename.concat Ocaml_directories.runtime "main.b.o" in
+  if Sys.file_exists main_object then " -ccopt " ^ main_object else ""
+
+let output_complete_exe env =
+  let flags =
+    Environments.safe_lookup Ocaml_variables.flags env ^ " " ^
+    Environments.safe_lookup Ocaml_variables.last_flags env in
+  List.exists ((=) "-output-complete-exe") (Misc.rev_split_words flags)
+
+let use_custom_runtime_main env =
+  match Environments.lookup_as_bool Ocaml_variables.custom_runtime_main env with
+  | Some false -> false
+  | _ -> true
+
 let runtime_flags env backend c_files =
   let runtime_library_flags = "-I " ^
     Ocaml_directories.runtime in
@@ -39,7 +54,12 @@ let runtime_flags env backend c_files =
     | Ocaml_backends.Bytecode ->
       begin
         if c_files then begin (* custom mode *)
-          "-custom " ^ (runtime_variant_flags ())
+          let main_object =
+            if output_complete_exe env || not (use_custom_runtime_main env)
+            then ""
+            else custom_runtime_main_object ()
+          in
+          "-custom " ^ (runtime_variant_flags ()) ^ main_object
         end else begin (* non-custom mode *)
           let use_runtime =
             Environments.lookup_as_bool Ocaml_variables.use_runtime env

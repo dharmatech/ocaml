@@ -238,6 +238,10 @@ let use_runtime =
   Variables.make ("use_runtime",
     "Whether the -use-runtime option should be used" )
 
+let custom_runtime_main =
+  Variables.make ("custom_runtime_main",
+    "Whether ocamltest should add the default bytecode custom-runtime main object")
+
 let _ = List.iter register_variable
   [
     all_modules;
@@ -299,4 +303,5 @@ let _ = List.iter register_variable
     shared_library_cflags;
     sharedobjext;
     use_runtime;
+    custom_runtime_main;
   ]

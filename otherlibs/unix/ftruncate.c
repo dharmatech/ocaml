@@ -21,11 +21,11 @@
 #include <caml/io.h>
 #include <caml/signals.h>
 #include "unixsupport.h"
-#ifdef HAS_UNISTD
+#if defined(HAS_UNISTD) || defined(CAML_PLAN9_TRUNCATE_FALLBACKS)
 #include <unistd.h>
 #endif
 
-#ifdef HAS_TRUNCATE
+#if defined(HAS_TRUNCATE) || defined(CAML_PLAN9_TRUNCATE_FALLBACKS)
 
 CAMLprim value unix_ftruncate(value fd, value len)
 {

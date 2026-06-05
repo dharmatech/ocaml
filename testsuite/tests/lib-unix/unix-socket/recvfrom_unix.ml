@@ -1,10 +1,12 @@
 (* TEST
 include unix
 modules = "recvfrom.ml"
+script = "sh ${test_source_directory}/has-unix-dgram-recvfrom.sh"
 * hasunix
 ** not-windows
-*** bytecode
-*** native
+*** script
+**** bytecode
+**** native
 *)
 open Recvfrom
 

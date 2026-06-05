@@ -342,6 +342,7 @@ CAMLprim value unix_tcdrain(value fd)
 }
 #endif
 
+#if defined(TCIFLUSH) && defined(TCOFLUSH) && defined(TCIOFLUSH)
 static int queue_flag_table[] = {
   TCIFLUSH, TCOFLUSH, TCIOFLUSH
 };
@@ -352,7 +353,12 @@ CAMLprim value unix_tcflush(value fd, value queue)
     uerror("tcflush", Nothing);
   return Val_unit;
 }
+#else
+CAMLprim value unix_tcflush(value fd, value queue)
+{ caml_invalid_argument("tcflush not implemented"); }
+#endif
 
+#if defined(TCOOFF) && defined(TCOON) && defined(TCIOFF) && defined(TCION)
 static int action_flag_table[] = {
   TCOOFF, TCOON, TCIOFF, TCION
 };
@@ -363,6 +369,10 @@ CAMLprim value unix_tcflow(value fd, value action)
     uerror("tcflow", Nothing);
   return Val_unit;
 }
+#else
+CAMLprim value unix_tcflow(value fd, value action)
+{ caml_invalid_argument("tcflow not implemented"); }
+#endif
 
 #else
 

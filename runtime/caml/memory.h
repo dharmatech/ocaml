@@ -257,8 +257,16 @@ struct caml__roots_block {
   value *tables [5];
 };
 
-/* Global variable moved to Caml_state in 4.10 */
-#define caml_local_roots (Caml_state_field(local_roots))
+/* Global variable moved to Caml_state in 4.10.
+   Avoid Caml_state_field(local_roots) here: some preprocessors expand the
+   legacy local_roots compatibility macro before the token paste in
+   Caml_state_field. */
+#ifdef CAML_NAME_SPACE
+#define Caml_state_local_roots Caml_state->local_roots
+#else
+#define Caml_state_local_roots Caml_state->_local_roots
+#endif
+#define caml_local_roots (Caml_state_local_roots)
 
 /* The following macros are used to declare C local variables and
    function parameters of type [value].
@@ -292,7 +300,7 @@ struct caml__roots_block {
 */
 
 #define CAMLparam0() \
-  struct caml__roots_block *caml__frame = Caml_state_field(local_roots)
+  struct caml__roots_block *caml__frame = Caml_state_local_roots
 
 #define CAMLparam1(x) \
   CAMLparam0 (); \
@@ -344,8 +352,8 @@ struct caml__roots_block {
   struct caml__roots_block caml__roots_##x; \
   CAMLunused_start int caml__dummy_##x = ( \
     (void) caml__frame, \
-    (caml__roots_##x.next = Caml_state_field(local_roots)), \
-    (Caml_state_field(local_roots) = &caml__roots_##x), \
+    (caml__roots_##x.next = Caml_state_local_roots), \
+    (Caml_state_local_roots = &caml__roots_##x), \
     (caml__roots_##x.nitems = 1), \
     (caml__roots_##x.ntables = 1), \
     (caml__roots_##x.tables [0] = &x), \
@@ -356,8 +364,8 @@ struct caml__roots_block {
   struct caml__roots_block caml__roots_##x; \
   CAMLunused_start int caml__dummy_##x = ( \
     (void) caml__frame, \
-    (caml__roots_##x.next = Caml_state_field(local_roots)), \
-    (Caml_state_field(local_roots) = &caml__roots_##x), \
+    (caml__roots_##x.next = Caml_state_local_roots), \
+    (Caml_state_local_roots = &caml__roots_##x), \
     (caml__roots_##x.nitems = 1), \
     (caml__roots_##x.ntables = 2), \
     (caml__roots_##x.tables [0] = &x), \
@@ -369,8 +377,8 @@ struct caml__roots_block {
   struct caml__roots_block caml__roots_##x; \
   CAMLunused_start int caml__dummy_##x = ( \
     (void) caml__frame, \
-    (caml__roots_##x.next = Caml_state_field(local_roots)), \
-    (Caml_state_field(local_roots) = &caml__roots_##x), \
+    (caml__roots_##x.next = Caml_state_local_roots), \
+    (Caml_state_local_roots = &caml__roots_##x), \
     (caml__roots_##x.nitems = 1), \
     (caml__roots_##x.ntables = 3), \
     (caml__roots_##x.tables [0] = &x), \
@@ -383,8 +391,8 @@ struct caml__roots_block {
   struct caml__roots_block caml__roots_##x; \
   CAMLunused_start int caml__dummy_##x = ( \
     (void) caml__frame, \
-    (caml__roots_##x.next = Caml_state_field(local_roots)), \
-    (Caml_state_field(local_roots) = &caml__roots_##x), \
+    (caml__roots_##x.next = Caml_state_local_roots), \
+    (Caml_state_local_roots = &caml__roots_##x), \
     (caml__roots_##x.nitems = 1), \
     (caml__roots_##x.ntables = 4), \
     (caml__roots_##x.tables [0] = &x), \
@@ -398,8 +406,8 @@ struct caml__roots_block {
   struct caml__roots_block caml__roots_##x; \
   CAMLunused_start int caml__dummy_##x = ( \
     (void) caml__frame, \
-    (caml__roots_##x.next = Caml_state_field(local_roots)), \
-    (Caml_state_field(local_roots) = &caml__roots_##x), \
+    (caml__roots_##x.next = Caml_state_local_roots), \
+    (Caml_state_local_roots = &caml__roots_##x), \
     (caml__roots_##x.nitems = 1), \
     (caml__roots_##x.ntables = 5), \
     (caml__roots_##x.tables [0] = &x), \
@@ -414,8 +422,8 @@ struct caml__roots_block {
   struct caml__roots_block caml__roots_##x; \
   CAMLunused_start int caml__dummy_##x = (     \
     (void) caml__frame, \
-    (caml__roots_##x.next = Caml_state_field(local_roots)), \
-    (Caml_state_field(local_roots) = &caml__roots_##x), \
+    (caml__roots_##x.next = Caml_state_local_roots), \
+    (Caml_state_local_roots = &caml__roots_##x), \
     (caml__roots_##x.nitems = (size)), \
     (caml__roots_##x.ntables = 1), \
     (caml__roots_##x.tables[0] = &(x[0])), \
@@ -451,7 +459,7 @@ struct caml__roots_block {
   CAMLxparamN (x, (size))
 
 
-#define CAMLdrop Caml_state_field(local_roots) = caml__frame
+#define CAMLdrop Caml_state_local_roots = caml__frame
 
 #define CAMLreturn0 do{ \
   CAMLdrop; \
@@ -500,16 +508,16 @@ struct caml__roots_block {
 
 #define Begin_roots1(r0) { \
   struct caml__roots_block caml__roots_block; \
-  caml__roots_block.next = Caml_state_field(local_roots); \
-  Caml_state_field(local_roots) = &caml__roots_block; \
+  caml__roots_block.next = Caml_state_local_roots; \
+  Caml_state_local_roots = &caml__roots_block; \
   caml__roots_block.nitems = 1; \
   caml__roots_block.ntables = 1; \
   caml__roots_block.tables[0] = &(r0);
 
 #define Begin_roots2(r0, r1) { \
   struct caml__roots_block caml__roots_block; \
-  caml__roots_block.next = Caml_state_field(local_roots); \
-  Caml_state_field(local_roots) = &caml__roots_block; \
+  caml__roots_block.next = Caml_state_local_roots; \
+  Caml_state_local_roots = &caml__roots_block; \
   caml__roots_block.nitems = 1; \
   caml__roots_block.ntables = 2; \
   caml__roots_block.tables[0] = &(r0); \
@@ -517,8 +525,8 @@ struct caml__roots_block {
 
 #define Begin_roots3(r0, r1, r2) { \
   struct caml__roots_block caml__roots_block; \
-  caml__roots_block.next = Caml_state_field(local_roots); \
-  Caml_state_field(local_roots) = &caml__roots_block; \
+  caml__roots_block.next = Caml_state_local_roots; \
+  Caml_state_local_roots = &caml__roots_block; \
   caml__roots_block.nitems = 1; \
   caml__roots_block.ntables = 3; \
   caml__roots_block.tables[0] = &(r0); \
@@ -527,8 +535,8 @@ struct caml__roots_block {
 
 #define Begin_roots4(r0, r1, r2, r3) { \
   struct caml__roots_block caml__roots_block; \
-  caml__roots_block.next = Caml_state_field(local_roots); \
-  Caml_state_field(local_roots) = &caml__roots_block; \
+  caml__roots_block.next = Caml_state_local_roots; \
+  Caml_state_local_roots = &caml__roots_block; \
   caml__roots_block.nitems = 1; \
   caml__roots_block.ntables = 4; \
   caml__roots_block.tables[0] = &(r0); \
@@ -538,8 +546,8 @@ struct caml__roots_block {
 
 #define Begin_roots5(r0, r1, r2, r3, r4) { \
   struct caml__roots_block caml__roots_block; \
-  caml__roots_block.next = Caml_state_field(local_roots); \
-  Caml_state_field(local_roots) = &caml__roots_block; \
+  caml__roots_block.next = Caml_state_local_roots; \
+  Caml_state_local_roots = &caml__roots_block; \
   caml__roots_block.nitems = 1; \
   caml__roots_block.ntables = 5; \
   caml__roots_block.tables[0] = &(r0); \
@@ -550,13 +558,13 @@ struct caml__roots_block {
 
 #define Begin_roots_block(table, size) { \
   struct caml__roots_block caml__roots_block; \
-  caml__roots_block.next = Caml_state_field(local_roots); \
-  Caml_state_field(local_roots) = &caml__roots_block; \
+  caml__roots_block.next = Caml_state_local_roots; \
+  Caml_state_local_roots = &caml__roots_block; \
   caml__roots_block.nitems = (size); \
   caml__roots_block.ntables = 1; \
   caml__roots_block.tables[0] = (table);
 
-#define End_roots() Caml_state_field(local_roots) = caml__roots_block.next; }
+#define End_roots() Caml_state_local_roots = caml__roots_block.next; }
 
 
 /* [caml_register_global_root] registers a global C variable as a memory root

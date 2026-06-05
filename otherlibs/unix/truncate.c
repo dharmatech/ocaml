@@ -22,8 +22,12 @@
 #include <caml/signals.h>
 #include <caml/io.h>
 #include "unixsupport.h"
-#ifdef HAS_UNISTD
+#if defined(HAS_UNISTD) || defined(CAML_PLAN9_TRUNCATE_FALLBACKS)
 #include <unistd.h>
+#endif
+#ifdef CAML_PLAN9_TRUNCATE_FALLBACKS
+#include <errno.h>
+#include <fcntl.h>
 #endif
 
 #ifdef HAS_TRUNCATE
@@ -54,6 +58,58 @@ CAMLprim value unix_truncate_64(value path, value vlen)
   p = caml_stat_strdup(String_val(path));
   caml_enter_blocking_section();
   ret = truncate(p, len);
+  caml_leave_blocking_section();
+  caml_stat_free(p);
+  if (ret == -1)
+    uerror("truncate", path);
+  CAMLreturn(Val_unit);
+}
+
+#elif defined(CAML_PLAN9_TRUNCATE_FALLBACKS)
+
+static int caml_plan9_truncate(const char *path, file_offset len)
+{
+  int fd, ret, saved_errno;
+
+  if (len < 0) {
+    errno = EINVAL;
+    return -1;
+  }
+  fd = open(path, O_WRONLY);
+  if (fd == -1) return -1;
+  ret = ftruncate(fd, len);
+  saved_errno = errno;
+  if (close(fd) == -1 && ret == 0) return -1;
+  errno = saved_errno;
+  return ret;
+}
+
+CAMLprim value unix_truncate(value path, value len)
+{
+  CAMLparam2(path, len);
+  char * p;
+  int ret;
+  caml_unix_check_path(path, "truncate");
+  p = caml_stat_strdup(String_val(path));
+  caml_enter_blocking_section();
+  ret = caml_plan9_truncate(p, Long_val(len));
+  caml_leave_blocking_section();
+  caml_stat_free(p);
+  if (ret == -1)
+    uerror("truncate", path);
+  CAMLreturn(Val_unit);
+}
+
+CAMLprim value unix_truncate_64(value path, value vlen)
+{
+  CAMLparam2(path, vlen);
+  char * p;
+  int ret;
+  file_offset len = File_offset_val(vlen);
+  caml_unix_check_path(path, "truncate");
+  p = caml_stat_strdup(String_val(path));
+  caml_enter_blocking_section();
+  ret = caml_plan9_truncate(p, len);
   caml_leave_blocking_section();
   caml_stat_free(p);
   if (ret == -1)

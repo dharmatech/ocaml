@@ -25,6 +25,18 @@
 
 /* Structural comparison on trees. */
 
+#ifdef CAML_PLAN9_MATH_FALLBACKS
+static int caml_plan9_double_is_nan(double d)
+{
+  union { double d; uint64_t i; } u;
+  uint64_t n;
+
+  u.d = d;
+  n = u.i << 1;                 /* shift sign bit off */
+  return (n >> 53) == 0x7FF && (n << 11) != 0;
+}
+#endif
+
 struct compare_item { value * v1, * v2; mlsize_t count; };
 
 #define COMPARE_STACK_INIT_SIZE 8
@@ -215,6 +227,15 @@ static intnat do_compare_val(struct compare_stack* stk,
     case Double_tag: {
       double d1 = Double_val(v1);
       double d2 = Double_val(v2);
+#ifdef CAML_PLAN9_MATH_FALLBACKS
+      int d1_is_nan = caml_plan9_double_is_nan(d1);
+      int d2_is_nan = caml_plan9_double_is_nan(d2);
+      if (d1_is_nan || d2_is_nan) {
+        if (! total) return UNORDERED;
+        if (d1_is_nan) return d2_is_nan ? EQUAL : LESS;
+        return GREATER;
+      }
+#endif
       if (d1 < d2) return LESS;
       if (d1 > d2) return GREATER;
       if (d1 != d2) {
@@ -235,6 +256,18 @@ static intnat do_compare_val(struct compare_stack* stk,
       for (i = 0; i < sz1; i++) {
         double d1 = Double_flat_field(v1, i);
         double d2 = Double_flat_field(v2, i);
+#ifdef CAML_PLAN9_MATH_FALLBACKS
+        int d1_is_nan = caml_plan9_double_is_nan(d1);
+        int d2_is_nan = caml_plan9_double_is_nan(d2);
+        if (d1_is_nan || d2_is_nan) {
+          if (! total) return UNORDERED;
+          if (d1_is_nan) {
+            if (d2_is_nan) continue;
+            return LESS;
+          }
+          return GREATER;
+        }
+#endif
         if (d1 < d2) return LESS;
         if (d1 > d2) return GREATER;
         if (d1 != d2) {

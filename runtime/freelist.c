@@ -859,7 +859,9 @@ static struct large_free_block *bf_large_least;
 
 /* Find first (i.e. least significant) bit set in a word. */
 #ifdef HAS_FFS
+#ifndef CAML_PLAN9_NO_STRINGS_H
 #include <strings.h>
+#endif
 #elif defined(HAS_BITSCANFORWARD)
 #include <intrin.h>
 Caml_inline int ffs (int x)

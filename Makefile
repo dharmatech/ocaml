@@ -32,12 +32,12 @@ endif
 ifeq "$(UNIX_OR_WIN32)" "win32"
 LN = cp
 else
-LN = ln -sf
+LN = ln -s -f
 endif
 
 include stdlib/StdlibModules
 
-CAMLC=$(BOOT_OCAMLC) -g -nostdlib -I boot -use-prims runtime/primitives
+CAMLC=$(BOOT_OCAMLC) -nostdlib -I boot -use-prims runtime/primitives
 CAMLOPT=$(OCAMLRUN) ./ocamlopt$(EXE) -g -nostdlib -I stdlib -I otherlibs/dynlink
 ARCHES=amd64 i386 arm arm64 power s390x riscv
 INCLUDES=-I utils -I parsing -I typing -I bytecomp -I file_formats \
@@ -49,7 +49,7 @@ INCLUDES=-I utils -I parsing -I typing -I bytecomp -I file_formats \
 COMPFLAGS=-strict-sequence -principal -absname \
           -w +a-4-9-40-41-42-44-45-48-66-70 \
           -warn-error +a \
-          -bin-annot -safe-string -strict-formats $(INCLUDES)
+          -safe-string -strict-formats $(INCLUDES)
 LINKFLAGS=
 
 ifeq "$(strip $(NATDYNLINKOPTS))" ""
@@ -113,10 +113,10 @@ reconfigure:
 	ac_read_git_config=true ./configure $(CONFIGURE_ARGS)
 
 utils/domainstate.ml: utils/domainstate.ml.c runtime/caml/domain_state.tbl
-	$(CPP) -I runtime/caml $< > $@
+	$(CPP) -I runtime/caml $< | sed '/^#line /d' > $@
 
 utils/domainstate.mli: utils/domainstate.mli.c runtime/caml/domain_state.tbl
-	$(CPP) -I runtime/caml $< > $@
+	$(CPP) -I runtime/caml $< | sed '/^#line /d' > $@
 
 AUTOCONF_TOOL_NAME ?=
 
@@ -633,7 +633,7 @@ clean:: partialclean
 
 ocamlc$(EXE): compilerlibs/ocamlcommon.cma \
               compilerlibs/ocamlbytecomp.cma $(BYTESTART)
-	$(CAMLC) $(LINKFLAGS) -compat-32 -o $@ $^
+	$(CAMLC) $(LINKFLAGS) -o $@ $^
 
 partialclean::
 	rm -rf ocamlc$(EXE)
@@ -904,13 +904,16 @@ ifeq "$(OCAML_DEVELOPMENT_VERSION)" "true"
 PARSER_DEPS += tools/check-parser-uptodate-or-warn.sh
 endif
 
-parsing/parser.ml: $(PARSER_DEPS)
+parsing/parser.ml: $(PARSER_DEPS) tools/plan9-menhir-replace
 ifeq "$(OCAML_DEVELOPMENT_VERSION)" "true"
 	@-tools/check-parser-uptodate-or-warn.sh
 endif
-	sed "s/MenhirLib/CamlinternalMenhirLib/g" $< > $@
-parsing/parser.mli: boot/menhir/parser.mli
-	sed "s/MenhirLib/CamlinternalMenhirLib/g" $< > $@
+	tools/plan9-menhir-replace $< $@
+parsing/parser.mli: boot/menhir/parser.mli tools/plan9-menhir-replace
+	tools/plan9-menhir-replace $< $@
+
+tools/plan9-menhir-replace: tools/plan9-menhir-replace.c
+	c89 -o $@ $<
 
 beforedepend:: parsing/camlinternalMenhirLib.ml \
   parsing/camlinternalMenhirLib.mli \

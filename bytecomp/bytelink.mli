@@ -36,6 +36,7 @@ type error =
   | Required_module_unavailable of modname * modname
   | Camlheader of string * filepath
   | Wrong_link_order of (modname * modname) list
+  | Output_complete_obj_unsupported
 
 exception Error of error
 

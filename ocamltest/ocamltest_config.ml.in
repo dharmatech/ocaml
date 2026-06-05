@@ -43,9 +43,9 @@ let asmext = "%%S%%"
 
 let system = "%%SYSTEM%%"
 
-let c_preprocessor = "%%CPP%%"
-
 let ocamlsrcdir = "%%ocamlsrcdir%%"
+
+let c_preprocessor = ocamlsrcdir ^ "/tools/ocaml-cpp"
 
 let flambda = %%FLAMBDA%%
 

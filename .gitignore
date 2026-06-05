@@ -32,6 +32,10 @@
 *.out
 *.out.dSYM
 *.swp
+*.before-plan9-*
+*.issue*.before
+*.orig
+*.tmp
 _ocamltest
 _ocamltestd
 *.odoc
@@ -49,6 +53,7 @@ _build
 /config.log
 /config.status
 /flexlink.opt
+/ld=new
 /libtool
 /ocamlc.opt
 /expunge
@@ -282,3 +287,6 @@ _build
 /yacc/ocamlyacc
 /yacc/version.h
 /yacc/.gdb_history
+
+/manual/src/version.tex
+/tools/plan9-menhir-replace

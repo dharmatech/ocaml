@@ -187,7 +187,7 @@ directories := $(addprefix $(ROOTDIR)/,utils bytecomp parsing stdlib \
 
 include_directories := $(addprefix -I , $(directories))
 
-flags := -g -nostdlib $(include_directories) \
+flags := -nostdlib $(include_directories) \
   -strict-sequence -safe-string -strict-formats \
   -w +a-4-9-41-42-44-45-48 -warn-error +A
 
@@ -217,7 +217,7 @@ $(eval $(call PROGRAM_SYNONYM,ocamltest))
 ocamltest_unix.%: flags+=$(unix_include) -opaque
 
 ocamltest$(EXE): $(deps_byte) $(bytecode_modules)
-	$(ocamlc_cmd) $(unix_include)-custom -o $@ $^
+	$(ocamlc_cmd) $(unix_include)-ccopt ../runtime/main.b.$(O) -custom -o $@ $^
 
 %.cmo: %.ml $(deps_byte)
 	$(ocamlc) -c $<

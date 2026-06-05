@@ -1,0 +1,16 @@
+#!/bin/ape/sh
+tmp=${TMPDIR:-/tmp}/ocaml-cpp.$$
+
+trap 'rm -f "$tmp"' 0 1 2 3 15
+
+/bin/ape/cc -E "$@" >"$tmp"
+status=$?
+if [ $status -ne 0 ]; then
+  if [ -f "$tmp" ]; then
+    cat "$tmp"
+  fi
+  exit $status
+fi
+
+sed 's/^#line /# /' "$tmp"
+exit $?

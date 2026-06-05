@@ -1,12 +1,21 @@
 #!/bin/sh
-ul=`ulimit -s`
-if ( [ "$ul" = "unlimited" ] || [ $ul -gt 4096 ] ) ; then
-  ulimit -s 1024 && ul=true || ul=false ;
-else
-  ul=true;
-fi
+run_test=true
+ul=`ulimit -s 2>/dev/null`
+case "$ul" in
+  unlimited)
+    ulimit -s 1024 >/dev/null 2>&1 || run_test=false
+    ;;
+  ''|*[!0-9]*)
+    run_test=true
+    ;;
+  *)
+    if [ "$ul" -gt 4096 ] ; then
+      ulimit -s 1024 >/dev/null 2>&1 || run_test=false
+    fi
+    ;;
+esac
 
-if $ul; then
+if $run_test; then
   ${program} > ${output} 2>&1;
 else
   # The test is not actually run

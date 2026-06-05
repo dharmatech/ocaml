@@ -25,6 +25,8 @@ unixLabels.cmi: \
 # dllunix.so particularly requires libm for modf symbols
 LDOPTS=$(NATIVECCLIBS)
 
+LINKOPTS=-cclib -lbsd
+
 COBJS=accept.o access.o addrofstr.o alarm.o bind.o channels.o chdir.o \
   chmod.o chown.o chroot.o close.o fsync.o closedir.o connect.o cst2constr.o \
   cstringv.o dup.o dup2.o envir.o errmsg.o execv.o execve.o execvp.o exit.o \

@@ -1,0 +1,18 @@
+#!/bin/rc
+
+rfork e
+
+if(! test -f git-exclude){
+	echo 'git-status: git-exclude not found; run ./mk-git-exclude' >[1=2]
+	exit no.git-exclude
+}
+
+git/fs >[2]/dev/null
+if(! ~ $status ''){
+	echo 'git-status: git/fs failed: '^$status >[1=2]
+	exit $status
+}
+
+git/walk -f MRA $*
+git/walk -f U -c $* | grep -v -f git-exclude | sed 's/^/U /'
+exit ''

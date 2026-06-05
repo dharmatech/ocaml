@@ -26,6 +26,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <errno.h>
 #include <string.h>
 #include <float.h>
 #include <limits.h>
@@ -73,6 +74,121 @@
 #ifndef nextafter
 #define nextafter _nextafter
 #endif
+#endif
+
+#ifdef CAML_PLAN9_MATH_FALLBACKS
+static int caml_plan9_double_is_nan(double d)
+{
+  union { double d; uint64_t i; } u;
+  uint64_t n;
+
+  u.d = d;
+  n = u.i << 1;                 /* shift sign bit off */
+  return (n >> 53) == 0x7FF && (n << 11) != 0;
+}
+
+static int caml_plan9_double_is_finite(double d)
+{
+  union { double d; uint64_t i; } u;
+  uint64_t n;
+
+  u.d = d;
+  n = u.i << 1;                 /* shift sign bit off */
+  return (n >> 53) != 0x7FF;
+}
+
+static int caml_plan9_double_sign_bit(double d)
+{
+  union { double d; uint64_t i; } u;
+
+  u.d = d;
+  return (u.i >> 63) != 0;
+}
+
+static double caml_plan9_double_infinity(int negative)
+{
+  union { double d; uint64_t i; } u;
+
+  u.i = ((uint64_t)0x7FF << 52);
+  if (negative) u.i |= ((uint64_t)1 << 63);
+  return u.d;
+}
+
+static double caml_plan9_double_nan(int negative)
+{
+  union { double d; uint64_t i; } u;
+
+  u.i = ((uint64_t)0x7FF << 52) | ((uint64_t)1 << 51);
+  if (negative) u.i |= ((uint64_t)1 << 63);
+  return u.d;
+}
+
+static double caml_plan9_double_zero(int negative)
+{
+  union { double d; uint64_t i; } u;
+
+  u.i = 0;
+  if (negative) u.i |= ((uint64_t)1 << 63);
+  return u.d;
+}
+
+static int caml_plan9_ascii_lower(int c)
+{
+  return c >= 'A' && c <= 'Z' ? c + ('a' - 'A') : c;
+}
+
+static int caml_plan9_match_ascii_name(const char * s, const char * end,
+                                       const char * name)
+{
+  while (s < end && *name != 0) {
+    if (caml_plan9_ascii_lower((unsigned char) *s) != *name) return 0;
+    s++;
+    name++;
+  }
+  return s == end && *name == 0;
+}
+
+static int caml_plan9_float_of_special_name(const char * s, const char * end,
+                                            int negative, double * res)
+{
+  if (caml_plan9_match_ascii_name(s, end, "nan")) {
+    *res = caml_plan9_double_nan(negative);
+    return 1;
+  }
+  if (caml_plan9_match_ascii_name(s, end, "inf") ||
+      caml_plan9_match_ascii_name(s, end, "infinity")) {
+    *res = caml_plan9_double_infinity(negative);
+    return 1;
+  }
+  return 0;
+}
+
+#ifndef isfinite
+#define isfinite(x) caml_plan9_double_is_finite(x)
+#endif
+
+static double caml_plan9_nextafter(double x, double y)
+{
+  union { double d; uint64_t i; } u;
+
+  if (caml_plan9_double_is_nan(x) || caml_plan9_double_is_nan(y))
+    return x + y;
+  if (x == y) return y;
+
+  if (x == 0.0) {
+    u.i = (y < 0.0) ? (((uint64_t)1 << 63) | 1) : 1;
+    return u.d;
+  }
+
+  u.d = x;
+  if ((x > 0.0) == (x < y))
+    u.i++;
+  else
+    u.i--;
+  return u.d;
+}
+
+#define nextafter caml_plan9_nextafter
 #endif
 
 #ifndef M_LOG2E
@@ -179,14 +295,23 @@ CAMLprim value caml_format_float(value fmt, value arg)
   value res;
   double d = Double_val(arg);
 
-#ifdef HAS_BROKEN_PRINTF
+#if defined(HAS_BROKEN_PRINTF) || defined(CAML_PLAN9_MATH_FALLBACKS)
   if (isfinite(d)) {
 #endif
     USE_LOCALE;
     res = caml_alloc_sprintf(String_val(fmt), d);
     RESTORE_LOCALE;
-#ifdef HAS_BROKEN_PRINTF
+#if defined(HAS_BROKEN_PRINTF) || defined(CAML_PLAN9_MATH_FALLBACKS)
   } else {
+#ifdef CAML_PLAN9_MATH_FALLBACKS
+    if (caml_plan9_double_is_nan(d)) {
+      res = caml_copy_string("nan");
+    } else if (caml_plan9_double_sign_bit(d)) {
+      res = caml_copy_string("-inf");
+    } else {
+      res = caml_copy_string("inf");
+    }
+#else
     if (isnan(d)) {
       res = caml_copy_string("nan");
     } else {
@@ -195,6 +320,7 @@ CAMLprim value caml_format_float(value fmt, value arg)
       else
         res = caml_copy_string("-inf");
     }
+#endif
   }
 #endif
   return res;
@@ -285,6 +411,32 @@ CAMLprim value caml_hexstring_of_float(value arg, value vprec, value vstyle)
   return res;
 }
 
+#ifdef CAML_PLAN9_MATH_FALLBACKS
+static double caml_plan9_ldexp_positive_for_hex(double f, int exp)
+{
+  union { double d; uint64_t i; } u;
+  uint64_t mant, shifted, rem, halfway;
+  int e, shift;
+
+  u.d = f;
+  e = (int) ((u.i >> 52) & 0x7FF) - 1023;
+  if (e + exp >= -1022)
+    return ldexp(f, exp);
+
+  mant = (u.i & (((uint64_t) 1 << 52) - 1)) | ((uint64_t) 1 << 52);
+  shift = -(e + exp + 1022);
+  if (shift >= 64) return 0.0;
+
+  shifted = mant >> shift;
+  rem = mant & (((uint64_t) 1 << shift) - 1);
+  halfway = (uint64_t) 1 << (shift - 1);
+  if (rem > halfway || (rem == halfway && (shifted & 1))) shifted++;
+
+  u.i = shifted;
+  return u.d;
+}
+#endif
+
 static int caml_float_of_hex(const char * s, const char * end, double * res)
 {
   int64_t m = 0;                /* the mantissa - top 60 bits at most */
@@ -318,7 +470,11 @@ static int caml_float_of_hex(const char * s, const char * end, double * res)
         return 0;
       }
       else if (e >= INT_MAX) {
+#ifdef CAML_PLAN9_MATH_FALLBACKS
+        *res = m == 0 ? 0. : caml_plan9_double_infinity(0);
+#else
         *res = m == 0 ? 0. : HUGE_VAL;
+#endif
         return 0;
       }
       /* regular exponent value */
@@ -368,7 +524,13 @@ static int caml_float_of_hex(const char * s, const char * end, double * res)
       exp = exp + adj;
   }
   /* Apply exponent if needed */
-  if (exp != 0) f = ldexp(f, exp);
+  if (exp != 0) {
+#ifdef CAML_PLAN9_MATH_FALLBACKS
+    f = caml_plan9_ldexp_positive_for_hex(f, exp);
+#else
+    f = ldexp(f, exp);
+#endif
+  }
   /* Done! */
   *res = f;
   return 0;
@@ -402,16 +564,33 @@ CAMLprim value caml_float_of_string(value vs)
   if (src[0] == '0' && (src[1] == 'x' || src[1] == 'X')) {
     /* Convert using our hexadecimal FP parser */
     if (caml_float_of_hex(src + 2, dst, &d) == -1) goto error;
+#ifdef CAML_PLAN9_MATH_FALLBACKS
+    if (sign < 0) d = d == 0.0 ? caml_plan9_double_zero(1) : -d;
+#else
     if (sign < 0) d = -d;
+#endif
   } else {
     /* Convert using strtod */
+#ifdef CAML_PLAN9_MATH_FALLBACKS
+    if (caml_plan9_float_of_special_name(src, dst, sign < 0, &d)) {
+      end = dst;
+    } else {
+      errno = 0;
+#endif
 #if defined(HAS_STRTOD_L) && defined(HAS_LOCALE)
-    d = strtod_l((const char *) buf, &end, caml_locale);
+      d = strtod_l((const char *) buf, &end, caml_locale);
 #else
-    USE_LOCALE;
-    d = strtod((const char *) buf, &end);
-    RESTORE_LOCALE;
+      USE_LOCALE;
+      d = strtod((const char *) buf, &end);
+      RESTORE_LOCALE;
 #endif /* HAS_STRTOD_L */
+#ifdef CAML_PLAN9_MATH_FALLBACKS
+      if (errno == ERANGE && (d == HUGE_VAL || d == -HUGE_VAL))
+        d = caml_plan9_double_infinity(caml_plan9_double_sign_bit(d));
+      if (d == 0.0 && sign < 0)
+        d = caml_plan9_double_zero(1);
+    }
+#endif
     if (end != dst) goto error;
   }
   if (buf != parse_buffer) caml_stat_free(buf);
@@ -1089,7 +1268,9 @@ CAMLprim value caml_copysign_float(value f, value g)
 
 CAMLprim value caml_signbit(double x)
 {
-#ifdef HAS_C99_FLOAT_OPS
+#ifdef CAML_PLAN9_MATH_FALLBACKS
+  return Val_bool(caml_plan9_double_sign_bit(x));
+#elif defined(HAS_C99_FLOAT_OPS)
   return Val_bool(signbit(x));
 #else
   union double_as_two_int32 ux;
@@ -1105,16 +1286,45 @@ CAMLprim value caml_signbit_float(value f)
 
 CAMLprim value caml_neq_float(value f, value g)
 {
+#ifdef CAML_PLAN9_MATH_FALLBACKS
+  double df = Double_val(f);
+  double dg = Double_val(g);
+  if (caml_plan9_double_is_nan(df) || caml_plan9_double_is_nan(dg))
+    return Val_true;
+  return Val_bool(df != dg);
+#else
   return Val_bool(Double_val(f) != Double_val(g));
+#endif
 }
 
+#ifdef CAML_PLAN9_MATH_FALLBACKS
+#define DEFINE_NAN_CMP(op) (value f, value g) \
+{ \
+  double df = Double_val(f); \
+  double dg = Double_val(g); \
+  if (caml_plan9_double_is_nan(df) || caml_plan9_double_is_nan(dg)) \
+    return Val_false; \
+  return Val_bool(df op dg); \
+}
+#else
 #define DEFINE_NAN_CMP(op) (value f, value g) \
 { \
   return Val_bool(Double_val(f) op Double_val(g)); \
 }
+#endif
 
 intnat caml_float_compare_unboxed(double f, double g)
 {
+#ifdef CAML_PLAN9_MATH_FALLBACKS
+  int f_is_nan = caml_plan9_double_is_nan(f);
+  int g_is_nan = caml_plan9_double_is_nan(g);
+
+  if (f_is_nan) return g_is_nan ? 0 : -1;
+  if (g_is_nan) return 1;
+  if (f > g) return 1;
+  if (f < g) return -1;
+  return 0;
+#else
   /* If one or both of f and g is NaN, order according to the convention
      NaN = NaN and NaN < x for all other floats x. */
   /* This branchless implementation is from GPR#164.
@@ -1125,6 +1335,7 @@ intnat caml_float_compare_unboxed(double f, double g)
   intnat res =
     (intnat)(f > g) - (intnat)(f < g) + (intnat)(f == f) - (intnat)(g == g);
   return res;
+#endif
 }
 
 CAMLprim value caml_eq_float DEFINE_NAN_CMP(==)

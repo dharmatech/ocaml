@@ -146,6 +146,8 @@ CAMLdeprecated_typedef(addr, char *);
 #define CAMLalign(n) __attribute__((aligned(n)))
 #elif defined(_MSC_VER) && _MSC_VER >= 1500
 #define CAMLalign(n) __declspec(align(n))
+#elif defined(CAML_PLAN9_NO_ALIGN)
+#define CAMLalign(n)
 #else
 #error "How do I align values on this platform?"
 #endif

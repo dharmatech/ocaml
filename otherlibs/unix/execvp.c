@@ -97,6 +97,15 @@ static int unix_execve_script(const char * path,
   return errno;
 }
 
+#ifdef CAML_PLAN9_EXECVPE_FALLBACKS
+static int unix_execvpe_normalize_error(int err)
+{
+  return err == EPERM ? EACCES : err;
+}
+#else
+#define unix_execvpe_normalize_error(err) (err)
+#endif
+
 int unix_execvpe_emulation(const char * name,
                            char * const argv[],
                            char * const envp[])
@@ -106,7 +115,8 @@ int unix_execvpe_emulation(const char * name,
   int r, got_eacces;
 
   /* If name contains a '/', do not search in path */
-  if (strchr(name, '/') != NULL) return unix_execve_script(name, argv, envp);
+  if (strchr(name, '/') != NULL)
+    return unix_execvpe_normalize_error(unix_execve_script(name, argv, envp));
   /* Determine search path */
   searchpath = getenv("PATH");
   if (searchpath == NULL) searchpath = "/bin:/usr/bin";
@@ -133,6 +143,7 @@ int unix_execvpe_emulation(const char * name,
       r = unix_execve_script(fullname, argv, envp);
       free(fullname);
     }
+    r = unix_execvpe_normalize_error(r);
     switch (r) {
     case EACCES:
       /* Record that we got a "Permission denied" error and continue. */
@@ -140,7 +151,10 @@ int unix_execvpe_emulation(const char * name,
     case ENOENT: case ENOTDIR:
       /* The file was not found.  Continue the search. */
       break;
-    case EISDIR: case ELOOP:
+    case EISDIR:
+#ifdef ELOOP
+    case ELOOP:
+#endif
     case ENODEV: case ETIMEDOUT:
       /* Strange, unexpected error.  Continue the search. */
       break;

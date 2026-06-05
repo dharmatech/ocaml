@@ -1,0 +1,30 @@
+#!/bin/rc
+
+rfork e
+
+if(! test -f .gitignore){
+	echo 'mk-git-exclude: .gitignore not found' >[1=2]
+	exit no.gitignore
+}
+
+if(! test -f mk-git-exclude.awk){
+	echo 'mk-git-exclude: mk-git-exclude.awk not found' >[1=2]
+	exit no.awk
+}
+
+tmp=git-exclude.tmp
+rm -f $tmp >[2]/dev/null
+
+awk -f mk-git-exclude.awk .gitignore >$tmp
+if(! ~ $status ''){
+	rm -f $tmp >[2]/dev/null
+	exit $status
+}
+
+if(! grep -s . $tmp){
+	echo 'mk-git-exclude: generated git-exclude is empty' >[1=2]
+	rm -f $tmp >[2]/dev/null
+	exit empty.git-exclude
+}
+
+mv $tmp git-exclude

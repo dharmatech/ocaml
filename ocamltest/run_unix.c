@@ -20,6 +20,7 @@
 #include <stdlib.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <sys/stat.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <string.h>
@@ -32,15 +33,142 @@
 
 #define COREFILENAME "core"
 
+#ifndef SA_RESETHAND
+#define SA_RESETHAND 0
+#endif
+
+#ifdef CAML_PLAN9_OCAMLTEST_FALLBACKS
+extern char **environ;
+
+static int ocamltest_env_name_matches(
+  const char *entry, const char *name, size_t name_length)
+{
+  return strncmp(entry, name, name_length) == 0 && entry[name_length] == '=';
+}
+
+static int ocamltest_environ_length(void)
+{
+  int count = 0;
+  if (environ != NULL) {
+    while (environ[count] != NULL) count++;
+  }
+  return count;
+}
+
+static int ocamltest_setenv(const char *name, const char *value, int overwrite)
+{
+  int i, count, found = -1;
+  size_t name_length = strlen(name);
+  size_t value_length = strlen(value);
+  char *entry;
+  char **new_environ;
+
+  count = ocamltest_environ_length();
+  if (environ != NULL) {
+    for (i = 0; i < count; i++) {
+      if (ocamltest_env_name_matches(environ[i], name, name_length)) {
+        if (!overwrite) return 0;
+        found = i;
+        break;
+      }
+    }
+  }
+
+  entry = malloc(name_length + value_length + 2);
+  if (entry == NULL) return -1;
+  memcpy(entry, name, name_length);
+  entry[name_length] = '=';
+  memcpy(entry + name_length + 1, value, value_length);
+  entry[name_length + value_length + 1] = '\0';
+
+  new_environ = malloc((count + (found == -1 ? 2 : 1)) * sizeof(char *));
+  if (new_environ == NULL) {
+    free(entry);
+    return -1;
+  }
+  for (i = 0; i < count; i++)
+    new_environ[i] = (i == found) ? entry : environ[i];
+  if (found == -1) {
+    new_environ[count] = entry;
+    new_environ[count + 1] = NULL;
+  } else {
+    new_environ[count] = NULL;
+  }
+  environ = new_environ;
+  return 0;
+}
+
+static int ocamltest_unsetenv(const char *name)
+{
+  int i, count, kept = 0;
+  size_t name_length = strlen(name);
+  char **new_environ;
+
+  if (environ == NULL) return 0;
+  count = ocamltest_environ_length();
+  new_environ = malloc((count + 1) * sizeof(char *));
+  if (new_environ == NULL) return -1;
+  for (i = 0; i < count; i++) {
+    if (!ocamltest_env_name_matches(environ[i], name, name_length))
+      new_environ[kept++] = environ[i];
+  }
+  new_environ[kept] = NULL;
+  environ = new_environ;
+  return 0;
+}
+
+static void ocamltest_reset_fdinfo_for_exec(void)
+{
+  unlink("/env/_fdinfo");
+  ocamltest_unsetenv("_fdinfo");
+}
+
+static const char *ocamltest_strsignal(int sig)
+{
+  static char unknown_signal[32];
+
+  switch (sig) {
+    case SIGHUP: return "SIGHUP";
+    case SIGINT: return "SIGINT";
+    case SIGQUIT: return "SIGQUIT";
+    case SIGILL: return "SIGILL";
+    case SIGABRT: return "SIGABRT";
+    case SIGFPE: return "SIGFPE";
+    case SIGKILL: return "SIGKILL";
+    case SIGSEGV: return "SIGSEGV";
+    case SIGPIPE: return "SIGPIPE";
+    case SIGALRM: return "SIGALRM";
+    case SIGTERM: return "SIGTERM";
+    case SIGUSR1: return "SIGUSR1";
+    case SIGUSR2: return "SIGUSR2";
+    case SIGBUS: return "SIGBUS";
+    case SIGCHLD: return "SIGCHLD";
+    case SIGCONT: return "SIGCONT";
+    case SIGSTOP: return "SIGSTOP";
+    case SIGTSTP: return "SIGTSTP";
+    case SIGTTIN: return "SIGTTIN";
+    case SIGTTOU: return "SIGTTOU";
+    case SIGVTALRM: return "SIGVTALRM";
+    case SIGPROF: return "SIGPROF";
+    default:
+      snprintf(unknown_signal, sizeof(unknown_signal), "signal %d", sig);
+      return unknown_signal;
+  }
+}
+
+#define setenv ocamltest_setenv
+#define unsetenv ocamltest_unsetenv
+#define strsignal ocamltest_strsignal
+#endif
+
 static volatile int timeout_expired = 0;
 
-#define error(msg, ...) \
-error_with_location(__FILE__, __LINE__, settings, msg, ## __VA_ARGS__)
+#define error(...) \
+error_with_location(__FILE__, __LINE__, settings, __VA_ARGS__)
 
 /*
-  Note: the ## __VA_ARGS__ construct is gcc specific.
-  For a more portable (but also more complex) solution, see
-  http://stackoverflow.com/questions/20818800/variadic-macro-and-trailing-comma
+  APE cpp rejects gcc's comma-swallowing ", ## __VA_ARGS__" extension.
+  The message argument is required, so ordinary variadic macros are enough.
 */
 
 static void myperror_with_location(
@@ -59,13 +187,13 @@ static void myperror_with_location(
   va_end(ap);
 }
 
-#define myperror(msg, ...) \
-myperror_with_location(__FILE__, __LINE__, settings, msg, ## __VA_ARGS__)
+#define myperror(...) \
+myperror_with_location(__FILE__, __LINE__, settings, __VA_ARGS__)
 
 /* Same remark as for the error macro. */
 
-#define child_error(msg, ...) \
-  myperror(msg, ## __VA_ARGS__); \
+#define child_error(...) \
+  myperror(__VA_ARGS__); \
   goto child_failed;
 
 static void open_error_with_location(
@@ -90,6 +218,17 @@ static void realpath_error_with_location(
 #define realpath_error(filename) \
 realpath_error_with_location(__FILE__, __LINE__, settings, filename)
 
+static void stat_error_with_location(
+  const char *file, int line,
+  const command_settings *settings,
+  const char *msg)
+{
+  myperror_with_location(file, line, settings, "stat(\"%s\") failed", msg);
+}
+
+#define stat_error(filename) \
+stat_error_with_location(__FILE__, __LINE__, settings, filename)
+
 static void handle_alarm(int sig)
 {
   timeout_expired = 1;
@@ -112,18 +251,20 @@ static int paths_same_file(
     else realpath_error(path2);
   }
 #else
-  char realpath1[PATH_MAX], realpath2[PATH_MAX];
-  if (realpath(path1, realpath1) == NULL)
-    realpath_error(path1);
-  if (realpath(path2, realpath2) == NULL)
+  struct stat stat1, stat2;
+  if (stat(path1, &stat1) == -1)
+    stat_error(path1);
+  if (stat(path2, &stat2) == -1)
   {
     if (errno == ENOENT) return 0;
-    else realpath_error(path2);
+    else stat_error(path2);
   }
+  if (stat1.st_dev == stat2.st_dev && stat1.st_ino == stat2.st_ino)
+    same_file = 1;
 #endif /* __GLIBC__ */
+#ifdef __GLIBC__
   if (strcmp(realpath1, realpath2) == 0)
     same_file = 1;
-#ifdef __GLIBC__
   free(realpath1);
   free(realpath2);
 #endif /* __GLIBC__ */
@@ -226,6 +367,10 @@ static int run_command_child(const command_settings *settings)
 
   update_environment(settings->envp);
 
+#ifdef CAML_PLAN9_OCAMLTEST_FALLBACKS
+  ocamltest_reset_fdinfo_for_exec();
+#endif
+
   execvp(settings->program, settings->argv);
 
   myperror("Cannot execute %s", settings->program);
@@ -292,7 +437,7 @@ static int handle_process_termination(
 
 static int run_command_parent(const command_settings *settings, pid_t child_pid)
 {
-  int waiting = 1, status, code, child_code = 0;
+  int waiting = 1, status, code, child_code = 0, timed_out = 0;
   pid_t pid;
 
   if (settings->timeout>0)
@@ -316,8 +461,16 @@ static int run_command_parent(const command_settings *settings, pid_t child_pid)
           if ((settings->timeout > 0) && (timeout_expired))
           {
             timeout_expired = 0;
-            fprintf(stderr, "Timeout expired, killing all child processes\n");
+            timed_out = 1;
+            mylog(
+              settings->logger != NULL ? settings->logger : defaultLogger,
+              settings->loggerData,
+              "Timeout expired, killing all child processes\n");
             if (kill(-child_pid, SIGKILL) == -1) myperror("kill");
+#ifdef CAML_PLAN9_OCAMLTEST_FALLBACKS
+            if (kill(child_pid, SIGKILL) == -1 && errno != ESRCH)
+              myperror("kill child");
+#endif
           };
           break;
         case ECHILD:
@@ -333,7 +486,13 @@ static int run_command_parent(const command_settings *settings, pid_t child_pid)
     }
   }
 
-  return child_code;
+  if (settings->timeout > 0)
+  {
+    alarm(0);
+    timeout_expired = 0;
+  }
+
+  return timed_out && child_code == 0 ? 1 : child_code;
 }
 
 int run_command(const command_settings *settings)

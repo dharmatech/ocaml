@@ -50,6 +50,10 @@ CAMLprim value unix_getprotobyname(value name)
   return alloc_proto_entry(entry);
 }
 
+#ifdef CAML_PLAN9_NO_GETPROTOBYNUMBER
+CAMLprim value unix_getprotobynumber(value proto)
+{ caml_invalid_argument("getprotobynumber not implemented"); }
+#else
 CAMLprim value unix_getprotobynumber(value proto)
 {
   struct protoent * entry;
@@ -57,6 +61,7 @@ CAMLprim value unix_getprotobynumber(value proto)
   if (entry == (struct protoent *) NULL) caml_raise_not_found();
   return alloc_proto_entry(entry);
 }
+#endif
 
 #else
 

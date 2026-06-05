@@ -50,8 +50,20 @@ CAMLexport intnat volatile caml_pending_signals[NSIG];
    the former sets [errno].
  */
 static int sigprocmask_wrapper(int how, const sigset_t *set, sigset_t *oldset) {
+#ifdef CAML_PLAN9_SIGPROCMASK_FALLBACKS
+  sigset_t empty_set;
+  sigset_t local_set;
+  if (set == NULL) {
+    sigemptyset(&empty_set);
+    set = &empty_set;
+  }
+  local_set = *set;
+  if(sigprocmask(how, &local_set, oldset) != 0) return errno;
+  else return 0;
+#else
   if(sigprocmask(how, set, oldset) != 0) return errno;
   else return 0;
+#endif
 }
 
 CAMLexport int (*caml_sigmask_hook)(int, const sigset_t *, sigset_t *)
@@ -92,8 +104,13 @@ CAMLexport value caml_process_pending_signals_exn(void)
     if (!caml_pending_signals[i])
       continue;
 #ifdef POSIX_SIGNALS
+#ifdef CAML_PLAN9_SIGPROCMASK_FALLBACKS
+    if(sigismember(&set, i) == 1)
+      continue;
+#else
     if(sigismember(&set, i))
       continue;
+#endif
 #endif
     caml_pending_signals[i] = 0;
     {

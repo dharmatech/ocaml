@@ -31,7 +31,7 @@ define byte2native
 $(patsubst %.cmo,%.cmx,$(patsubst %.cma,%.cmxa,$1))
 endef
 
-CAMLC = $(BOOT_OCAMLC) -g -nostdlib -I $(ROOTDIR)/boot \
+CAMLC = $(BOOT_OCAMLC) -nostdlib -I $(ROOTDIR)/boot \
         -use-prims $(ROOTDIR)/runtime/primitives -I $(ROOTDIR)
 CAMLOPT = $(OCAMLRUN) $(ROOTDIR)/ocamlopt$(EXE) \
   -g -nostdlib -I $(ROOTDIR)/stdlib
@@ -40,7 +40,7 @@ INCLUDES = $(addprefix -I $(ROOTDIR)/,utils parsing typing bytecomp \
                        middle_end/flambda/base_types driver toplevel \
                        file_formats lambda)
 COMPFLAGS = -absname -w +a-4-9-41-42-44-45-48-70 -strict-sequence \
--warn-error +A -principal -safe-string -strict-formats -bin-annot $(INCLUDES)
+-warn-error +A -principal -safe-string -strict-formats $(INCLUDES)
 LINKFLAGS = $(INCLUDES)
 VPATH := $(filter-out -I,$(INCLUDES))
 
@@ -76,7 +76,6 @@ OCAMLDEP = \
   $(ROOTDIR)/compilerlibs/ocamlbytecomp.cma \
   ocamldep.cmo depend.cmi
 
-ocamldep$(EXE): LINKFLAGS += -compat-32
 ocamldep$(EXE): $(OCAMLDEP)
 ocamldep.opt$(EXE): $(call byte2native, $(OCAMLDEP))
 

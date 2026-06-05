@@ -12,8 +12,32 @@
 (*                                                                        *)
 (**************************************************************************)
 
-(* Unix.has_symlink never raises *)
-let has_symlink = Unix.has_symlink
+let has_symlink =
+  let known = ref None in
+  fun () ->
+    match !known with
+    | Some result -> result
+    | None ->
+      let result =
+        if not (Unix.has_symlink ()) then
+          false
+        else
+          let source = Filename.temp_file "ocamltest" "src" in
+          let link = source ^ ".link" in
+          let cleanup () =
+            (try Sys.remove link with Sys_error _ -> ());
+            (try Sys.remove source with Sys_error _ -> ())
+          in
+          try
+            Unix.symlink source link;
+            cleanup ();
+            true
+          with _ ->
+            cleanup ();
+            false
+      in
+      known := Some result;
+      result
 
 (* Convert Unix_error to Sys_error *)
 let wrap f x =

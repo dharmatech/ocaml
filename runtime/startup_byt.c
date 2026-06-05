@@ -452,6 +452,17 @@ extern void caml_install_invalid_parameter_handler();
 
 #endif
 
+#ifdef CAML_PLAN9_MATH_FALLBACKS
+extern void setfcr(unsigned long);
+extern void setfsr(unsigned long);
+
+static void caml_plan9_init_float_control(void)
+{
+  setfcr(0);
+  setfsr(0);
+}
+#endif
+
 /* Main entry point when loading code from a file */
 
 CAMLexport void caml_main(char_os **argv)
@@ -463,6 +474,10 @@ CAMLexport void caml_main(char_os **argv)
   char * req_prims;
   char_os * shared_lib_path, * shared_libs;
   char_os * exe_name, * proc_self_exe;
+
+#ifdef CAML_PLAN9_MATH_FALLBACKS
+  caml_plan9_init_float_control();
+#endif
 
   /* Initialize the domain */
   caml_init_domain();

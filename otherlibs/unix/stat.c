@@ -27,6 +27,13 @@
 #include "unixsupport.h"
 #include "cst2constr.h"
 
+#ifdef CAML_PLAN9_MATH_FALLBACKS
+extern double caml_nextafter(double, double);
+#ifndef nextafter
+#define nextafter caml_nextafter
+#endif
+#endif
+
 #ifndef S_IFLNK
 #define S_IFLNK 0
 #endif

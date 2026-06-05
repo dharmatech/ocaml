@@ -28,6 +28,33 @@
 #include "socketaddr.h"
 #endif
 
+#if defined(CAML_PLAN9_CHANNEL_SOCKET_FALLBACKS) && defined(HAS_SOCKETS)
+/* APE keeps socket type in a private Rock table.  See
+   /sys/src/ape/lib/bsd/priv.h; only the stable prefix is repeated here. */
+typedef struct caml_plan9_ape_socket_rock {
+  struct caml_plan9_ape_socket_rock *next;
+  unsigned long dev;
+  unsigned long inode;
+  int domain;
+  int stype;
+  int protocol;
+} caml_plan9_ape_socket_rock;
+
+extern caml_plan9_ape_socket_rock *_sock_findrock(int, struct stat *);
+
+static int caml_plan9_socket_stream_semantics
+           (int fd, struct stat *buf, int *is_socket)
+{
+  caml_plan9_ape_socket_rock *rock = _sock_findrock(fd, buf);
+  if (rock == NULL) {
+    *is_socket = 0;
+    return 0;
+  }
+  *is_socket = 1;
+  return rock->stype == SOCK_STREAM ? 0 : EINVAL;
+}
+#endif
+
 /* Check that the given file descriptor has "stream semantics" and
    can therefore be used as part of buffered I/O.  Things that
    don't have "stream semantics" include block devices and
@@ -39,11 +66,19 @@ static int unix_check_stream_semantics(int fd)
   struct stat buf;
 
   if (fstat(fd, &buf) == -1) return errno;
+#if defined(CAML_PLAN9_CHANNEL_SOCKET_FALLBACKS) && defined(HAS_SOCKETS)
+  {
+    int is_socket;
+    int socket_err = caml_plan9_socket_stream_semantics(fd, &buf, &is_socket);
+    if (is_socket || socket_err != 0) return socket_err;
+  }
+#endif
   switch (buf.st_mode & S_IFMT) {
   case S_IFREG: case S_IFCHR: case S_IFIFO:
     /* These have stream semantics */
     return 0;
-#ifdef HAS_SOCKETS
+#if defined(HAS_SOCKETS) && defined(S_IFSOCK) && \
+    (!defined(S_IFIFO) || S_IFSOCK != S_IFIFO)
   case S_IFSOCK: {
     int so_type;
     socklen_param_type so_type_len = sizeof(so_type);

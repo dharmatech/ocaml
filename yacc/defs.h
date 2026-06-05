@@ -30,6 +30,20 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef CAML_PLAN9_YACC_STANDALONE
+typedef char char_os;
+#define T(x) x
+#define Noreturn
+#define fopen_os fopen
+#define main_os main
+#define mktemp_os mktemp
+#define strcmp_os strcmp
+#define strcpy_os strcpy
+#define strlen_os strlen
+#define unlink_os unlink
+#define caml_stat_strdup strdup
+#define caml_stat_strdup_of_os strdup
+#else
 #define CAML_INTERNALS
 #include "caml/config.h"
 #include "caml/mlvalues.h"
@@ -37,6 +51,7 @@
 #include "caml/misc.h"
 
 #define caml_stat_strdup strdup
+#endif
 
 /*  machine-dependent definitions                              */
 /*  the following definitions are for the Tahoe                */

@@ -269,7 +269,7 @@ build_config.h: $(ROOTDIR)/Makefile.config sak$(EXE)
 # Libraries and programs
 
 ocamlrun$(EXE): prims.$(O) libcamlrun.$(A)
-	$(MKEXE) -o $@ $^ $(LIBS)
+	$(MKEXE) -o $@ prims.$(O) main.b.$(O) libcamlrun.$(A) $(LIBS)
 
 ocamlruns$(EXE): prims.$(O) libcamlrun_non_shared.$(A)
 	$(call MKEXE_USING_COMPILER,$@,$^ $(LIBS))

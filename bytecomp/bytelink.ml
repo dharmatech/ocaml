@@ -31,6 +31,7 @@ type error =
   | Required_module_unavailable of modname * modname
   | Camlheader of string * filepath
   | Wrong_link_order of (modname * modname) list
+  | Output_complete_obj_unsupported
 
 exception Error of error
 
@@ -589,6 +590,10 @@ let build_custom_runtime prim_name exec_name =
     if not !Clflags.with_runtime
     then ""
     else "-lcamlrun" ^ !Clflags.runtime_variant in
+  let complete_exe_cppflags =
+    if !Clflags.output_complete_executable
+    then List.rev (Misc.rev_split_words Config.ocamlc_cppflags)
+    else [] in
   let debug_prefix_map =
     if Config.c_has_debug_prefix_map && not !Clflags.keep_camlprimc_file then
       let flag =
@@ -604,7 +609,8 @@ let build_custom_runtime prim_name exec_name =
     (Clflags.std_include_flag "-I" ^ " " ^ Config.bytecomp_c_libraries)
   in
   Ccomp.call_linker Ccomp.Exe exec_name
-    (debug_prefix_map @ [prim_name] @ List.rev !Clflags.ccobjs @ [runtime_lib])
+    (debug_prefix_map @ complete_exe_cppflags @
+     [prim_name] @ List.rev !Clflags.ccobjs @ [runtime_lib])
     exitcode = 0
 
 let append_bytecode bytecode_name exec_name =
@@ -622,6 +628,9 @@ let fix_exec_name name =
     "Win32" | "Cygwin" ->
       if String.contains name '.' then name else name ^ ".exe"
   | _ -> name
+
+let target_is_plan9 =
+  Config.target = "plan9" || Filename.check_suffix Config.target "-plan9"
 
 (* Main entry point (build a custom runtime if needed) *)
 
@@ -698,6 +707,11 @@ let link objfiles output_name =
            append_bytecode bytecode_name exec_name
       )
   end else begin
+    if target_is_plan9
+       && !Clflags.output_complete_object
+       && not !Clflags.output_complete_executable
+       && not (Filename.check_suffix output_name ".c")
+    then raise (Error Output_complete_obj_unsupported);
     let basename = Filename.remove_extension output_name in
     let c_file, stable_name =
       if !Clflags.output_complete_object
@@ -790,6 +804,11 @@ let report_error ppf = function
       in
       fprintf ppf "@[<hov 2>Wrong link order: %a@]"
         (pp_print_list ~pp_sep:(fun ppf () -> fprintf ppf ",@ ") depends_on) l
+  | Output_complete_obj_unsupported ->
+      fprintf ppf
+        "-output-complete-obj is not supported on Plan 9 when producing an \
+         object file because the configured PACKLD requires Unix-style \
+         relocatable partial linking"
 
 let () =
   Location.register_error_of_exn

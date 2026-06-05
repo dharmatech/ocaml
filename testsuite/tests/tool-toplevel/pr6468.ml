@@ -1,4 +1,5 @@
 (* TEST
+   compiler_reference_suffix = ".plan9"
    * toplevel
 *)
 

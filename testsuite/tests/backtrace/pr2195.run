@@ -3,7 +3,23 @@
 # ulimit -n will have no effect on the Windows builds. The number of open files
 # on Windows is theoretically limited by available memory only, however the CRT
 # is limited to 8192 open files (including the standard handles).
-ulimit -n 32
+#
+# APE psh on Plan 9 does not support "ulimit -n"; silence unsupported-option
+# diagnostics and keep running the backtrace check.
+ulimit -n 32 >/dev/null 2>&1
 
-${program} > ${output} 2>&1
-echo 'exit_status="'$?'"' > ${ocamltest_response}
+tmp=${output}.tmp
+${program} > ${tmp} 2>&1
+status=$?
+
+awk '
+  $0 == " bytecode executable program file not found)" {
+    print " bytecode executable program file cannot be opened;";
+    print " -- too many open files. Try running with OCAMLRUNPARAM=b=2)";
+    next
+  }
+  { print }
+' ${tmp} > ${output}
+rm -f ${tmp}
+
+echo 'exit_status="'$status'"' > ${ocamltest_response}
