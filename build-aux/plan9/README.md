@@ -30,23 +30,28 @@ The path to GNU Make may differ on another system.
 
 ## Configure
 
-The current Plan 9 build uses the bytecode runtime and disables features that
-are not currently supported by this port:
+Use the Plan 9 configure wrapper from the repository root:
 
 ```sh
-./configure \
-  --prefix=/usr/glenda/lib/unix/ocaml-4.14.3 \
-  CC=c89 \
-  CPPFLAGS="-D_RESEARCH_SOURCE -D_BSD_EXTENSION -DCAML_PLAN9_NO_ALIGN -DCAML_PLAN9_NO_STRINGS_H -DCAML_PLAN9_MATH_FALLBACKS -DCAML_PLAN9_NO_GETPROTOBYNUMBER -DCAML_PLAN9_OCAMLTEST_FALLBACKS" \
-  --disable-native-compiler \
-  --disable-shared \
-  --disable-systhreads \
-  --disable-debug-runtime \
-  --disable-debugger \
-  --disable-ocamldoc \
-  --disable-ocamltest \
-  --disable-dependency-generation \
-  --enable-imprecise-c99-float-ops
+build-aux/plan9/configure.sh
+```
+
+The wrapper sets the repo-local shim `PATH` and configures the current
+bytecode-focused Plan 9 port. It defaults to:
+
+- `MAKE=/usr/glenda/lib/unix/bin/gmake`
+- `CC=c89`
+- Plan 9 runtime `CPPFLAGS`
+- `--prefix=/usr/glenda/lib/unix/ocaml-4.14.3`
+- disabled native compiler, shared libraries, systhreads, debug runtime,
+  debugger, ocamldoc, ocamltest, and dependency generation
+- `--enable-imprecise-c99-float-ops`
+
+`MAKE`, `CC`, and `CPPFLAGS` can be overridden through the environment. Extra
+arguments are passed to `./configure`, so a test prefix can be selected with:
+
+```sh
+build-aux/plan9/configure.sh --prefix=/usr/glenda/lib/unix/ocaml-4.14.3-test
 ```
 
 ## Build
