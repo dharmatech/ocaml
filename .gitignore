@@ -62,6 +62,7 @@ _build
 /ocamlopt.opt
 /ocamlnat
 /_opam
+/logs/
 
 # specific files and patterns in sub-directories
 

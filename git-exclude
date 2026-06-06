@@ -42,6 +42,7 @@
 ^ocamlopt\.opt(/.*)?$
 ^ocamlnat(/.*)?$
 ^_opam(/.*)?$
+^logs(/.*)?$
 ^asmcomp/emit\.ml(/.*)?$
 ^asmcomp/arch\.ml(/.*)?$
 ^asmcomp/proc\.ml(/.*)?$

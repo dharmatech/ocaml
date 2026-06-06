@@ -57,8 +57,11 @@ build-aux/plan9/configure.sh --prefix=/usr/glenda/lib/unix/ocaml-4.14.3-test
 ## Build
 
 ```sh
-gmake world
+build-aux/plan9/build-world.sh
 ```
+
+The wrapper sets the repo-local shim `PATH`, honors `MAKE` if it is already
+set, and otherwise uses `/usr/glenda/lib/unix/bin/gmake`.
 
 ## Install
 
