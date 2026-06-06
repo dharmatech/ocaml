@@ -201,9 +201,9 @@ open https://github.com/ocaml/ocaml/releases
 Add the new release branch to the Inria CI list.
 Remove the oldest branch from this list.
 
-## 5.4 new badge in README.adoc (for a new release branch)
+## 5.4 new badge in README.upstream.adoc (for a new release branch)
 
-Add a badge for the new branch in README.adoc.
+Add a badge for the new branch in README.upstream.adoc.
 Remove the oldest badge.
 
 ## 6: create OPAM packages
@@ -329,7 +329,7 @@ exit
 ```
 ssh $ARCHIVE_HOST "mkdir -p $DIST/notes"
 cd ocaml-$VERSION
-scp INSTALL.adoc LICENSE README.adoc README.win32.adoc Changes \
+scp INSTALL.adoc LICENSE README.upstream.adoc README.win32.adoc Changes \
    $ARCHIVE_HOST:$DIST/notes/
 ```
 
