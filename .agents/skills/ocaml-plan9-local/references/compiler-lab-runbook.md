@@ -255,6 +255,11 @@ Treat every path above as a candidate until the read-only guest inventory
 confirms it. Increment the development prefix for a new milestone. Never
 install over `/usr/glenda/lib/unix/ocaml-4.14.3`.
 
+On the compiler lab qualified for Phase 1, the resolved GNU Make command was
+`/usr/glenda/lib/unix/make-4.4.1/bin/make`; the example
+`/usr/glenda/lib/unix/bin/gmake` path was absent. Export the resolved command
+as `MAKE` for every helper in a gate and record it in evidence.
+
 Record configure inputs and resolved `MAKE`, `CC`, and prefix. After source-tree
 tests, leave APE and run installed consumer checks from native `rc` using only
 the new prefix.
@@ -263,8 +268,8 @@ For built-in `Plan9` packaging, require at least:
 
 ```text
 ocamlrun -p
-ocamlobjinfo plan9.cma
-ocamlc plan9.cma smoke.ml -o smoke
+ocamlobjinfo "$(ocamlc -where)/plan9/plan9.cma"
+ocamlc -I +plan9 plan9.cma smoke.ml -o smoke
 smoke
 ```
 

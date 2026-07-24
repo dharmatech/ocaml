@@ -93,7 +93,7 @@ For each meaningful native run, retain:
 - build, test, install, and smoke-test commands with exit statuses;
 - built runtime and library hashes;
 - installed prefix inventory;
-- `ocamlrun -p` and `ocamlobjinfo plan9.cma` results;
+- `ocamlrun -p` and installed `plan9/plan9.cma` `ocamlobjinfo` results;
 - exact consumer command lines;
 - failures and corrected retries as distinct attempts; and
 - cleanup, shutdown, and host postflight results.

@@ -173,6 +173,7 @@ INSTALL_BYTECODE_PROGRAMS=@install_bytecode_programs@
 #       (win32)unix       Unix system calls
 #       str               Regular expressions and high-level string processing
 #       systhreads        Same as threads, requires POSIX threads
+#       plan9             Native Plan 9 interfaces (Plan 9 targets only)
 OTHERLIBRARIES=@otherlibraries@
 
 ### Link-time options to ocamlc or ocamlopt for linking with POSIX threads

@@ -11,7 +11,7 @@ primitive tables known to both the runtime and bytecode compiler.
 Acceptance requires:
 
 ```text
-ocamlc plan9.cma program.ml -o program
+ocamlc -I +plan9 plan9.cma program.ml -o program
 ```
 
 That command must emit no consumer-side C compiler or linker invocation and
@@ -37,6 +37,8 @@ type error = {
   kind : error_kind;
   message : string;
 }
+
+exception Error of error
 ```
 
 Classifications are conveniences, not replacements for the exact native
@@ -52,11 +54,18 @@ module Env : sig
   type value = string list
 
   val get : string -> (value option, error) result
+  val get_exn : string -> value
   val set : string -> value -> (unit, error) result
   val remove : string -> (unit, error) result
   val names : unit -> (string list, error) result
 end
 ```
+
+`get_exn` raises `Not_found` for absence and `Plan9.Error` for validation or
+I/O failure. Removing an absent variable returns the native removal error.
+Direct writes are not transactional: an I/O failure may leave a truncated or
+partially written live file, and callers should reread it when recovery
+matters.
 
 Required distinctions are:
 
@@ -74,7 +83,10 @@ or newlines. Reject empty names, `.`, `..`, `/`, and embedded NUL. Allow
 ordinary Plan 9 names such as `fn#...`.
 
 Read and write native `/env` directly. Do not consult or update APE `environ`,
-and do not add a process-global mutation map.
+and do not add a process-global mutation map. Phase 1 may implement this
+entirely in ML using the existing runtime's file-I/O machinery; that does not
+make the complete executable or runtime APE-free. Built-in primitives remain
+the packaging boundary for later native process operations.
 
 ## Native processes
 

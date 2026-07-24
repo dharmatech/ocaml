@@ -547,6 +547,9 @@ AS_IF([test x"$enable_unix_lib" != "xno"],
     [otherlibraries="$otherlibraries $unixlib"])])
 AS_IF([test x"$enable_str_lib" != "xno"],
   [otherlibraries="$otherlibraries str"])
+AS_CASE([$host],
+  [*-*-plan9],
+    [otherlibraries="$otherlibraries plan9"])
 
 # Checks for system services
 

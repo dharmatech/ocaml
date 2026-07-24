@@ -28,6 +28,18 @@ export MAKE
 
 The path to GNU Make may differ on another system.
 
+The qualified compiler lab did not provide the example `gmake` path. Its
+accepted Phase 1 build exported this exact command before configure, build,
+test, and install:
+
+```sh
+MAKE=/usr/glenda/lib/unix/make-4.4.1/bin/make
+export MAKE
+```
+
+Resolve and record the actual GNU Make executable on each lab rather than
+assuming that the wrapper's default path exists.
+
 ## Configure
 
 Use the Plan 9 configure wrapper from the repository root:
@@ -47,6 +59,10 @@ bytecode-focused Plan 9 port. It defaults to:
   debugger, ocamldoc, ocamltest, and dependency generation
 - `--enable-imprecise-c99-float-ops`
 
+The Plan 9 target also selects the ML-only `plan9` otherlib. Installation puts
+`plan9.cma` and `plan9.cmi` beneath `$(ocamlc -where)/plan9`, for normal use as
+`ocamlc -I +plan9 plan9.cma ...`.
+
 `MAKE`, `CC`, and `CPPFLAGS` can be overridden through the environment. Extra
 arguments are passed to `./configure`, so a test prefix can be selected with:
 
@@ -62,6 +78,16 @@ build-aux/plan9/build-world.sh
 
 The wrapper sets the repo-local shim `PATH`, honors `MAKE` if it is already
 set, and otherwise uses `/usr/glenda/lib/unix/bin/gmake`.
+
+The focused source-tree environment test is:
+
+```sh
+"$MAKE" -C otherlibs/plan9 TEST_SUFFIX=phase1_manual_001 test
+```
+
+Supply a new suffix for each run. The test accepts only 1-40 ASCII letters,
+digits, or underscores, mutates only the two resulting dedicated names in the
+test process's `/env`, and removes both names on success or failure.
 
 ## Install
 
@@ -83,6 +109,22 @@ Make overrides needed by the current port:
 
 The wrapper honors `MAKE` if it is already set; otherwise it uses
 `/usr/glenda/lib/unix/bin/gmake`.
+
+## Phase 1 validation reference
+
+The accepted 2026-07-24 native build used exact staged index tree
+`7dee13d2b8c9fd159cb90d9834ea7100e5592e3b`, installed only under
+`/usr/glenda/lib/unix/ocaml-4.14.3-plan9-dev-001`, and left the production
+prefix unchanged. The focused environment suite passed, and an installed
+consumer built and ran with:
+
+```sh
+ocamlc -I +plan9 plan9.cma program.ml -o program
+```
+
+Fail-closed command sentinels proved that this ordinary link did not invoke a
+C compiler, linker, archiver, `ocamlmklib`, or `flexlink`. General `-custom`
+linking remains a separate later phase.
 
 ## Shims
 

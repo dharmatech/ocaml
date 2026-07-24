@@ -1,0 +1,5 @@
+plan9.cmo : \
+    plan9.cmi
+plan9.cmx : \
+    plan9.cmi
+plan9.cmi :

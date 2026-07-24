@@ -805,7 +805,7 @@ clean::
 	$(MAKE) -C runtime clean
 	rm -f stdlib/libcamlrun.a stdlib/libcamlrun.lib
 
-otherlibs_all := bigarray dynlink \
+otherlibs_all := bigarray dynlink plan9 \
   str systhreads unix win32unix
 subdirs := debugger lex ocamldoc ocamltest stdlib tools \
   $(addprefix otherlibs/, $(otherlibs_all)) \
@@ -1125,8 +1125,16 @@ endif
 
 # Default rules
 
+# The Plan 9 bootstrap compiler must be given the output path explicitly.
+# Its implicit-output mode otherwise misreports a redundant case while
+# compiling nested sources such as typing/typemod.ml.
+ifneq (,$(filter %-plan9,$(HOST)))
+%.cmo: %.ml
+	$(CAMLC) $(COMPFLAGS) -c $< -I $(@D) -o $@
+else
 %.cmo: %.ml
 	$(CAMLC) $(COMPFLAGS) -c $< -I $(@D)
+endif
 
 %.cmi: %.mli
 	$(CAMLC) $(COMPFLAGS) -c $<

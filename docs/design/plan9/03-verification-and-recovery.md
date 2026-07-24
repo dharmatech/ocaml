@@ -35,18 +35,22 @@ separately authorized phase.
 
 ## Packaging acceptance
 
-The built-in runtime packaging gate must prove:
+The Phase 1 ML-only packaging gate must prove:
 
-- `ocamlobjinfo plan9.cma` reports no forced custom linking, C objects, or
-  DLLs;
-- standard Plan 9 `ocamlrun -p` lists each `caml_plan9_*` primitive exactly
-  once;
-- `ocamlc plan9.cma smoke.ml -o smoke` invokes no C compiler or linker;
+- the installed archive is beneath `$(ocamlc -where)/plan9`;
+- `ocamlobjinfo $(ocamlc -where)/plan9/plan9.cma` reports no forced custom
+  linking, C objects, DLLs, or required Plan 9 external primitives;
+- `ocamlc -I +plan9 plan9.cma smoke.ml -o smoke` invokes no C compiler or
+  linker;
 - the link still succeeds with those tools absent from `PATH`;
 - the executable runs under the matching standard runtime;
-- ordinary bytecode not using `Plan9` remains unaffected;
-- an older runtime fails clearly on a required unknown primitive; and
-- non-Plan-9 builds neither compile nor advertise the primitives.
+- ordinary bytecode not using `Plan9` remains unaffected; and
+- non-Plan-9 builds neither select nor install the library.
+
+A later built-in-primitive packaging gate must additionally prove that the
+standard Plan 9 `ocamlrun -p` lists each `caml_plan9_*` primitive exactly once
+and that an older runtime fails clearly when bytecode requires a newer
+primitive.
 
 ## Environment acceptance
 

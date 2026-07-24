@@ -12682,6 +12682,10 @@ fi
 if test x"$enable_str_lib" != "xno"; then :
   otherlibraries="$otherlibraries str"
 fi
+case $host in #(
+  *-*-plan9) :
+    otherlibraries="$otherlibraries plan9" ;;
+esac
 
 # Checks for system services
 

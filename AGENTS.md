@@ -43,8 +43,8 @@ listener, instance, guest, and hash state before relying on it.
 - Compile `caml_plan9_*` implementations conditionally into the standard
   Plan 9 `ocamlrun` and its built-in primitive table. Non-Plan-9 builds must
   neither compile nor advertise those primitives.
-- Require normal use to work as
-  `ocamlc plan9.cma program.ml -o program`.
+- Require normal installed use to work as
+  `ocamlc -I +plan9 plan9.cma program.ml -o program`.
 - Operate `Plan9.Env` directly on the live native `/env` representation. Do not
   add an OCaml mutation overlay, replay map, APE `environ` synchronization, or
   command-specific environment wrapper.

@@ -24,7 +24,7 @@ ML-only, Plan 9-only plan9.cma
   declares and wraps those primitives
 
 ordinary consumer
-  ocamlc plan9.cma program.ml -o program
+  ocamlc -I +plan9 plan9.cma program.ml -o program
 ```
 
 Consumers do not use `-custom`, select a special runtime, invoke a C compiler
