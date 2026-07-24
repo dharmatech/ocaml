@@ -1,5 +1,10 @@
 # Native Plan 9 API requirements
 
+The process contract in this document promotes the accepted
+[P2 process-primitives design package](exploration/process-primitives/README.md).
+The numbered exchange remains useful provenance, but this file is the
+normative API and safety contract.
+
 ## Packaging
 
 `Plan9` is a Plan 9-only otherlib. Its installed archive is ML-only and must
@@ -88,85 +93,347 @@ entirely in ML using the existing runtime's file-I/O machinery; that does not
 make the complete executable or runtime APE-free. Built-in primitives remain
 the packaging boundary for later native process operations.
 
-## Native processes
+## Native identity and wait records
 
-`Plan9.Process` executes a program directly:
-
-```ocaml
-module Process : sig
-  type t
-
-  val spawn :
-    ?isolation:isolation ->
-    program:string ->
-    argv:string array ->
-    (t, error) result
-
-  val pid : t -> pid
-  val wait : t -> (wait_msg, error) result
-  val wait_any : unit -> (wait_msg, error) result
-end
-```
-
-`argv` is literal, nonempty, and includes `argv[0]`. There is no shell, PATH
-search, quoting, wildcard expansion, redirection, variable expansion, or
-argument rewriting.
-
-The production spawn boundary is one C primitive:
-
-1. validate every string, length, allocation, and policy value;
-2. copy all inputs into C-owned memory;
-3. create a native close-on-exec error pipe before rfork;
-4. perform native rfork;
-5. in the child, prepare only the declared native resources, exec directly,
-   report the exact exec error through the pipe if necessary, and exit
-   natively;
-6. never allocate, callback, finalize, use an OCaml channel, or return to the
-   OCaml runtime in the child; and
-7. return to OCaml in the parent only after the exec-success/error handshake.
-
-Successful exec closes the child pipe writer and produces EOF in the parent.
-An error payload means exec failed and must be preserved before the failed
-child is reaped.
-
-The child is waitable. The safe layer copies the file-descriptor group and
-makes environment, namespace, note group, rendezvous group, and mount policy
-explicit. A wait cache may retain other complete `Plan9.Process` wait records
-while waiting for a particular PID.
-
-## Wait
-
-Preserve the native record:
+Preserve the native record and give each managed child a separate logical
+identity:
 
 ```ocaml
+type pid = private int
+type process_id = private int64
+
 type wait_msg = {
   pid : pid;
   user_time_ms : int64;
   system_time_ms : int64;
   elapsed_time_ms : int64;
-  status : string;
+  message : string;
 }
 
-val wait : unit -> (wait_msg, error) result
+val wait_succeeded : wait_msg -> bool
 ```
 
-Do not use `option`: no living children, interruption, malformed records, and
-other failures are distinct results. Do not automatically retry interruption.
-Preserve empty status as native success and preserve nonempty status exactly.
-Do not translate into Unix exit or signal constructors.
+`wait_succeeded m` is true exactly when `m.message = ""`. Preserve the
+complete native `Waitmsg.msg`, including any native program-name or PID
+prefix, rather than reducing it to an `_exits` argument, Unix exit code, or
+signal constructor. The installed ABI probe must confirm the width and unit
+conversion for all three timing fields.
 
-Prefer a bounded direct native await boundary with faithful Plan 9 field
-parsing. Report truncation or malformed data as `Protocol_error`.
+Every managed child receives a monotonically allocated `process_id` before
+rfork. It is never reused during the runtime instance. Process-ID exhaustion,
+wraparound, reservation collision, or inability to preallocate the ownership
+record fails before rfork and therefore creates no child.
+
+## Narrow `Plan9.Raw` boundary
+
+The stable low-level surface is deliberately small:
+
+```ocaml
+module Raw : sig
+  val copy_environment : unit -> (unit, error) result
+
+  val exec :
+    program:string ->
+    argv:string array ->
+    ('a, error) result
+end
+```
+
+`copy_environment ()` performs only the current-process equivalent of
+`rfork(RFENVG)`. It creates no child, accepts no mask, and returns once to the
+calling OCaml process. The CPU-017 integration uses it exactly once after
+finalizing globally intended `NPROC`, `sysname`, and prompt values and before
+writing derived `auth` and `serviced` values. The continuing process and its
+later service launchers share that deliberately selected copied environment
+group; the original group does not receive the derived writes.
+
+`Raw.exec` replaces the current process on success. It accepts a literal,
+nonempty native vector and never rewrites `argv[0]`. Reject an empty vector,
+embedded NUL in the program or any argument, malformed direct primitive
+values, and any length or aggregate allocation that the native representation
+cannot express.
+
+There is no public raw wait operation, raw integer rfork mask, child-returning
+rfork, or Phase 2 `RFNOMNT` option.
+
+## Canonical `Plan9.Process` interface
+
+`Plan9.Process` executes programs directly and preserves ownership across
+every post-rfork nonterminal result:
+
+```ocaml
+module Process : sig
+  type t
+
+  type stdout =
+    | Inherit
+    | Truncate of string
+
+  type launch_incomplete =
+    | Exec_failure_unreaped of error
+    | Handshake_interrupted of error
+    | Handshake_protocol_error of error
+
+  type launch =
+    | Launch_started of t
+    | Launch_incomplete of {
+        process : t;
+        reason : launch_incomplete;
+      }
+
+  type wait_unresolved =
+    | Await_interrupted of error
+    | Await_error of error
+    | Foreign_backpressure of {
+        queued : int;
+        capacity : int;
+      }
+    | Coordinator_invariant_failure of error
+    | Malformed_native_record of error
+
+  type wait_terminal_failure =
+    | Wait_queue_lost of error
+
+  type wait_result =
+    | Wait_finished of wait_msg
+    | Wait_unresolved of {
+        process : t;
+        reason : wait_unresolved;
+      }
+    | Wait_terminal_failure of {
+        process : t;
+        reason : wait_terminal_failure;
+      }
+
+  type completion =
+    | Managed of t * wait_msg
+    | Foreign of wait_msg
+
+  type wait_any_result =
+    | Wait_any_finished of completion
+    | Wait_any_unresolved of {
+        processes : t list;
+        reason : wait_unresolved;
+      }
+    | Wait_any_terminal_failure of {
+        processes : t list;
+        reason : wait_terminal_failure;
+      }
+
+  type run_incomplete =
+    | Run_launch_incomplete of launch_incomplete
+    | Run_wait_unresolved of wait_unresolved
+
+  type run_terminal_failure =
+    | Run_wait_queue_lost of {
+        wait_error : error;
+        exec_error : error option;
+      }
+
+  type run =
+    | Run_finished of wait_msg
+    | Run_incomplete of {
+        process : t;
+        reason : run_incomplete;
+      }
+    | Run_terminal_failure of {
+        process : t;
+        reason : run_terminal_failure;
+      }
+
+  val spawn :
+    ?stdout:stdout ->
+    program:string ->
+    args:string array ->
+    (launch, error) result
+
+  val run :
+    ?stdout:stdout ->
+    program:string ->
+    args:string array ->
+    (run, error) result
+
+  val id : t -> process_id
+  val pid : t -> pid
+
+  val wait : t -> wait_result
+  val wait_any : unit -> (wait_any_result, error) result
+
+  val unresolved : unit -> t list
+  val take_foreign_completions : unit -> wait_msg list
+end
+```
+
+The public constructor names above are canonical for Phase 2. An outer
+`Error` from `spawn` or `run` means no child created by that call remains:
+either no child was created, or a known exec-failure child was confirmed
+reaped through the shared coordinator. Every result for a child that may
+still be live, waitable, or otherwise unresolved carries its exact handle.
+
+A matching completion produces `Wait_finished` or `Run_finished`. Exact
+`No_children` loss produces `Wait_terminal_failure` or
+`Run_terminal_failure`, retaining the handle for identity and diagnosis even
+though the child is gone. Interruption, ordinary await error, foreign
+backpressure, invariant failure, and malformed-record failure produce
+`Wait_unresolved` or a handle-bearing `Run_incomplete` as applicable.
+`Run_wait_queue_lost` carries the exact wait error and also the exact exec
+error when the child had already reported one.
+
+`spawn` and `run` accept arguments after `argv[0]`. They construct the exact
+native vector:
+
+```text
+argv = [| program; args.(0); ...; args.(n - 1) |]
+```
+
+An empty `args` array is valid. There is no shell, PATH search, quoting,
+globbing, redirection parsing, variable expansion, environment overlay, or
+argument rewriting. `stdout` is limited initially to inherited output or a
+parent-opened truncate-file destination.
+
+## Combined rfork and exec primitive
+
+Production spawn uses one private C primitive:
+
+1. validate every OCaml value, string, length, allocation, and fixed policy;
+2. reserve the never-reused process ID and preallocate all native
+   pending-child storage before rfork;
+3. copy every program, argument, path, and policy input into C-owned memory;
+4. create the close-on-exec error pipe before rfork;
+5. invoke rfork with exactly `RFPROC | RFFDG | RFREND`;
+6. in the positive-PID parent branch, publish the preallocated native
+   pending-child record allocation-free before handshake I/O, a blocking
+   section, OCaml allocation, asynchronous-exception delivery, or return to
+   ML;
+7. in the child, perform only collision-safe descriptor preparation, direct
+   native exec, bounded error-frame output on failure, and native `_exits`;
+8. never allocate, callback, finalize, use an OCaml channel, run OCaml code, or
+   return to the OCaml runtime in the child; and
+9. never call await inside the primitive.
+
+The fixed flags copy the file-descriptor group and create the process and
+rendezvous group while sharing the deliberately selected environment,
+namespace, and note groups. Phase 2 does not expose `RFNOMNT`; it may interfere
+with the preferred `#d/<fd>` handshake reopening and requires a separate
+future sandboxing design.
+
+The parent-side ML coordinator creates the handle, installs its active PID
+mapping, and then acknowledges adoption by process ID. Only that
+acknowledgment removes the native pending entry. `Process.unresolved ()`
+adopts a still-pending entry idempotently: repeated inspection returns the
+same logical process identity and memoized state. A pending entry already
+terminalized by exact `No_children` is adopted as that same terminal handle.
+
+Clean EOF before any frame byte means exec success. Exec failure uses the
+bounded versioned frame:
+
+```text
+4 bytes  ASCII tag and version: "P9E1"
+4 bytes  unsigned big-endian payload length
+N bytes  exact native error text within the measured fixed bound
+EOF      required immediately after the payload
+```
+
+The child handles short writes without allocation. The parent performs
+complete bounded reads and rejects a truncated header or payload, invalid tag
+or length, trailing data, or premature EOF. Handshake interruption and
+malformation are distinct handle-bearing launch results. The pipe endpoint is
+close-on-exec, and descriptor moves must remain correct when descriptors 0, 1,
+or 2 begin closed or collide with the pipe or stdout destination.
+
+A known exec-failure child is adopted and reaped only through the shared
+coordinator. If reaping is confirmed, `spawn` may return the preserved exec
+error as outer `Error`. Interruption, ambiguity, or another nonterminal
+condition returns `Launch_incomplete` with the owned handle.
+
+If exact `No_children` occurs before the matching exec-failure completion is
+observed, the handle is terminal `Wait_queue_lost` but the launch remains
+`Launch_incomplete` with its exact exec error. It is not converted to outer
+`Error`, because the coordinator did not observe the matching completion.
+`run` reports that terminal wait state as `Run_terminal_failure` with the same
+handle and both exact errors.
+
+## Synchronous wait coordinator
+
+Native await consumes one process-wide wait queue. Plan9.Process is its sole
+consumer while any adopted handle or native pending-child record remains
+unresolved. During that interval, `Sys.command`, `Unix.wait`, APE wait
+functions, and unrelated native waiters are unsupported and must not run.
+There is no public `Plan9.Raw.wait_any`.
+
+The interval begins immediately after the first successful managed rfork and
+ends only when no adopted or native-pending owner remains unresolved.
+Coordinator ownership does not create a background reaper. Native await runs
+only when known exec-failure cleanup, `Process.wait`, `Process.wait_any`, or
+`Process.run` invokes the coordinator synchronously. Successful `spawn`
+starts no hidden worker. Retaining a long-lived handle retains the obligation
+to drive its eventual wait; discarding it does not imply `RFNOWAIT` or
+automatic cleanup.
+
+`run` invokes `spawn` and normally drives the same coordinator until the
+direct child reaches a terminal result. It returns early only with the same
+handle when launch or wait remains unresolved. It never introduces a private
+wait path.
+
+The coordinator maintains:
+
+- one active PID mapping for each unresolved managed handle;
+- terminal completion or loss state on the logical handle, not in a permanent
+  PID cache;
+- a bounded FIFO of completions classified as foreign when reaped; and
+- the native pending-child registry until identity-preserving ML adoption.
+
+A matching completion atomically removes the active PID mapping and memoizes
+the complete native record on that handle. Repeated waits return the memoized
+terminal result. An unknown-PID completion is classified as foreign
+immediately and is never attached to a later handle after PID reuse.
+
+While waiting for a particular handle, an unknown completion is appended to
+the foreign FIFO. If the FIFO is already full, the coordinator returns
+`Foreign_backpressure` without calling native await. If an appended record
+fills the last slot, the coordinator returns backpressure before consuming
+another record. The target remains active. `wait_any` returns the oldest
+queued foreign completion before invoking native await, and
+`take_foreign_completions` drains the FIFO in order. Either makes the original
+particular-handle wait retryable.
+
+A nonterminal `wait_any` result carries the complete current adopted-owner
+set. Before it calls native await, `wait_any` adopts recoverable native pending
+records. Outer `Error` from `wait_any` is permitted only when no managed or
+native-pending owner exists.
+
+## Wait failure semantics
+
+Do not automatically retry interruption. `Await_interrupted` and ordinary
+`Await_error` retain the active handle. `Foreign_backpressure` is explicitly
+retryable after FIFO drainage.
 
 Classify `No_children` only from the exact native no-living-children error and
-retain that message. A nil or failed native wait is not by itself evidence
-that no children remain.
+retain its message. When that exact observation occurs while owners remain,
+the coordinator atomically:
 
-Native waits consume one process-wide child wait queue. `Plan9.Raw.wait`,
-`Plan9.Process` waits, and `Unix.wait` cannot transparently coexist: one API
-may consume another API's child record. The initial managed guarantee covers
-children created and waited through `Plan9.Process`; mixing those waits with
-`Unix.wait` or independent raw wait consumers is unsupported.
+1. memoizes `Wait_queue_lost` on every adopted unresolved handle;
+2. memoizes the same terminal loss on every unadopted native pending record;
+3. removes active PID mappings that can no longer produce a completion; and
+4. stops awaiting for those terminal owners.
+
+Later adoption observes the original process ID and memoized loss; it never
+creates an apparently active handle after the kernel proved no child remains.
+A nil or failed native wait is not by itself evidence of `No_children`.
+
+An external waiter may steal one completion while another child remains
+alive. Before exact `No_children`, that is indistinguishable from the first
+child still running. The library prohibits mixed waiting but does not promise
+finite-time theft detection without native evidence.
+
+An ownership invariant failure and a malformed or unrepresentable native
+record are distinct failed-closed coordinator states. Already terminal
+handles remain terminal; every representable nonterminal adopted or pending
+owner remains owned and unresolved; no record is assigned arbitrarily; and
+the coordinator performs no further native await. These failures do not prove
+child absence, so the exclusive-wait interval remains open and another wait
+facility may not take over. An active PID collision never overwrites the
+earlier mapping.
 
 ## Rfork safety
 
@@ -182,11 +449,12 @@ Permanently reject:
 - unsafe current-process resource clearing; and
 - `RFNOWAIT` in the managed process API.
 
-The initial public low-level current-process operation may permit only audited
-copy/new-group policy. Process creation remains a combined native rfork-exec
-operation whose child never returns to OCaml. Any future child-returning
-facility belongs under an explicitly unstable `Raw.Unsafe` boundary after a
-dedicated GC, runtime, note, channel, and descriptor audit.
+The only initial public current-process rfork operation is the exact
+`Raw.copy_environment ()` copy described above. Process creation remains a
+combined native rfork-exec operation whose child never returns to OCaml. Any
+future child-returning facility belongs under an explicitly unstable
+`Raw.Unsafe` boundary after a dedicated GC, runtime, note, channel, and
+descriptor audit.
 
 ## Defensive primitive boundary
 
@@ -202,4 +470,6 @@ discoverable. Every primitive must validate:
 - resource cleanup on every failure path.
 
 Release the OCaml runtime around genuinely blocking native calls and re-enter
-before allocating OCaml results.
+before allocating OCaml results. The no-OCaml child rule is stricter: after
+rfork, the child uses only prevalidated C-owned data and native operations
+until exec or `_exits`.
