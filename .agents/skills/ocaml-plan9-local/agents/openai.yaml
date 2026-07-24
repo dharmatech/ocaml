@@ -1,0 +1,4 @@
+interface:
+  display_name: "OCaml Plan 9 Local"
+  short_description: "Operate the local OCaml compiler lab safely"
+  default_prompt: "Use $ocaml-plan9-local to prepare or run an isolated OCaml Plan 9 compiler-lab gate."
