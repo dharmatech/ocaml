@@ -1,6 +1,6 @@
 # OCaml Plan 9 local current state
 
-Last recorded: 2026-07-24 11:44:52 -07:00 America/Los_Angeles
+Last recorded: 2026-07-24 16:31:48 -07:00 America/Los_Angeles
 
 Origin profile: Dharmatech Windows/QEMU development host
 
@@ -14,6 +14,26 @@ Treat this as a dated observation, not proof of live state:
 - **Required next** describes what must be revalidated before acting.
 
 ## Repository observation
+
+The clean published boundaries at the start of
+`plan9-phase-2-cross-repository-state-reconciliation-001` were:
+
+```text
+OCaml repository: C:\Users\dharm\src\ocaml
+branch: plan9-4.14.3-000
+HEAD: 0cac1612379a1fad427c82663fc81454a7b2d15a
+tree: 32c6e9f5de738dcbf8bc28ff04ae9ecd629f49e1
+tracking and advertised origin ref: equal to HEAD
+
+caml9 repository: C:\Users\dharm\src\caml9
+branch: front
+HEAD: 838a8a22d2621bc39861430aedfe441c337acee8
+tree: f6157ab9a5b65f65a51d767264bd8a8b823323ab
+tracking and advertised origin ref: equal to HEAD
+```
+
+Both indexes and worktrees were clean. These are pre-publication identities;
+read live Git for the commits containing this reconciliation record.
 
 The published boundary at the start of
 `plan9-phase-1-env-completion-001` was:
@@ -146,6 +166,58 @@ checkpoints, and active disks remained outside the gate and were not inspected
 or changed. The OCaml task remains the sole stateful operator for the shared
 P9QEMU/VM/port state, with operational scope limited to this independent OCaml
 lab unless the user explicitly expands it.
+
+### Phase 2 cross-repository reconciliation
+
+`plan9-phase-2-cross-repository-state-reconciliation-001` revalidated the
+halted `.40` boundary without accessing a guest or any caml9 operational
+resource:
+
+```text
+instance contents: exactly disk.qcow2 and instance.json
+instance state: halted
+P9QEMU/Python/QEMU processes matching the exact .40 scope: none
+listeners on the seven 127.0.0.40 endpoints: none
+bindability: all seven endpoints passed
+disk bytes: 1387921408
+disk SHA-256:
+  71103c98e39e272a712af778abb90b430dd02e1dfec6335f9742d67154ef1e94
+instance.json bytes: 1033
+instance.json SHA-256:
+  c87a3a9c2ef79d7640e03c689861cfea0cd73c54c72eea5f77b81cd6d8e46225
+immutable base bytes: 559022080
+immutable base SHA-256:
+  7ff689b7b614f6884bf0a1ac525fca10b750934d99640e744823f450d28ff6b8
+cached manifest bytes: 1472
+cached manifest SHA-256:
+  d04b06e49c5357cd95b8a8dd47457cd2e935b89d8e49117032b29206874aead2
+```
+
+The exact two-object QCOW2 overlay/base relationship passed. Both objects had
+clean dirty and corrupt flags, and `qemu-img check` reported zero corruptions,
+leaks, or check errors. Installed P9QEMU 0.1.0 rendered only
+`whpx,kernel-irqchip=off` with no fallback in a non-launching dry run. Its
+fresh serial placeholder remained absent, and the post-dry-run process,
+listener, bindability, disk, and manifest checks passed unchanged.
+
+The accepted evidence is retained at:
+
+```text
+C:\Users\dharm\vm\ocaml\evidence\
+  plan9-phase-2-cross-repository-state-reconciliation-001\attempt-002
+```
+
+Attempt 001 is retained as rejected because it captured read-only QCOW2
+information before recording the required exact `.40` process and listener
+proof. It ran no integrity check, launched no process, and changed no VM,
+listener, disk, guest, or repository state.
+
+The explicit compiler-lab handoff had already transferred sole stateful
+ownership to the OCaml task. This gate corrected caml9's dated creation record
+without transferring ownership back. The caml9 `.32` guest, endpoints, process
+chain, disk, serial log, instances, and checkpoints were not queried,
+inspected, or changed; their tracked statements retain their earlier dated
+observations.
 
 ## Read-only guest inventory
 
@@ -507,22 +579,21 @@ checkpoint. It did not create a checkpoint or use TCG.
 
 ## Exact next gate
 
-After publication, the recommended next separately authorized gate is
-`plan9-phase-2-process-primitives-design-001`, a Windows-source and
-documentation-only design gate.
+After both reconciliation records are published, the recommended next
+separately authorized gate is
+`plan9-phase-2-process-primitives-abi-probe-001`.
 
-It should freeze the exact FFI boundary for built-in Plan 9 runtime
-primitives; the safe `Plan9.Process` API; native wait records and error
-classification; the child exec-failure handshake; descriptor, environment,
-namespace, and note-group policy; blocking-section behavior; and the public
-boundary around `Plan9.Raw.rfork`.
+That harmless installed-ABI gate may use only the `.40` compiler lab and
+bounded purpose-built probes to establish native declarations, symbol
+linkability, rfork flag values, exact exec vectors, `Waitmsg` layout and
+timing units, native errors, `OCEXEC` and `#d`, short pipe I/O, descriptor
+collisions, bounded interruption, current-process `RFENVG`, and short-lived
+completion ordering.
 
-The design must keep `RFMEM` impossible from public OCaml, minimize or
-eliminate OCaml execution in the child, keep ordinary `plan9.cma` consumers
-free of C tools and `-custom`, and preserve native `Waitmsg` status and timing
-data. It must not implement or build the process primitives, boot the lab,
-change either compiler prefix, repair general custom-runtime linking, or begin
-caml9 integration without a later authorization.
+It must not implement OCaml source, change a compiler prefix, access caml9,
+start or inspect `auth/keyfs` or `aux/listen`, use real service data, create
+listeners, or leave long-lived children. This reconciliation did not begin or
+authorize that probe.
 
 ## Recovery boundary
 
@@ -534,3 +605,7 @@ exclusive access to its disk, the `.40` endpoint set, the backing relationship,
 and a P9QEMU dry run using a fresh nonexistent serial placeholder. Never boot
 a protected checkpoint directly or reuse caml9 recovery state. The installed
 experimental prefix is mutable lab state, not a protected recovery point.
+
+The 2026-07-24 reconciliation passed those halted-host checks at the exact
+post-Phase-1 identity recorded above. That observation is not a checkpoint and
+must be revalidated again before the separately authorized ABI probe.
