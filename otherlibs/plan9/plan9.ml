@@ -12,20 +12,33 @@
 (*                                                                        *)
 (**************************************************************************)
 
-type error_kind =
+type error_kind = Plan9_process.error_kind =
   | No_children
   | Interrupted
   | Invalid_argument
   | Protocol_error
   | Other
 
-type error = {
+type error = Plan9_process.error = {
   operation : string;
   kind : error_kind;
   message : string;
 }
 
 exception Error of error
+
+type pid = Plan9_process.pid
+type process_id = Plan9_process.process_id
+
+type wait_msg = Plan9_process.wait_msg = {
+  pid : pid;
+  user_time_ms : int64;
+  system_time_ms : int64;
+  elapsed_time_ms : int64;
+  message : string;
+}
+
+let wait_succeeded = Plan9_process.wait_succeeded
 
 module Env = struct
   type value = string list
@@ -160,3 +173,65 @@ module Env = struct
     | Result.Error _ as error -> error
     | Ok () -> protect_io operation (fun () -> Sys.remove (path name))
 end
+
+module Native = struct
+  let foreign_capacity = 64
+
+  (* RFPROC | RFFDG | RFREND.  The C primitive independently requires this
+     exact value; this private constant is not a generic rfork interface. *)
+  let spawn_flags = 16 lor 4 lor 8192
+
+  external copy_environment :
+    unit -> (unit, Plan9_process.native_failure) result
+    = "caml_plan9_copy_environment"
+
+  external exec :
+    string ->
+    string array ->
+    ('a, Plan9_process.native_failure) result
+    = "caml_plan9_exec"
+
+  external spawn :
+    string ->
+    string array ->
+    int ->
+    string ->
+    int ->
+    (Plan9_process.native_pending, Plan9_process.native_failure) result
+    = "caml_plan9_process_spawn"
+
+  external pending :
+    unit -> Plan9_process.native_pending array
+    = "caml_plan9_process_pending"
+
+  external acknowledge_pending :
+    int64 -> bool
+    = "caml_plan9_process_acknowledge"
+
+  external await :
+    unit -> Plan9_process.native_wait_event
+    = "caml_plan9_process_await"
+
+  external acknowledge_wait :
+    int64 -> bool
+    = "caml_plan9_process_acknowledge_wait"
+end
+
+module Raw = struct
+  let copy_environment () =
+    match Native.copy_environment () with
+    | Ok () -> Ok ()
+    | Result.Error native_error ->
+        Result.Error
+          (Plan9_process.error_of_native
+             "Plan9.Raw.copy_environment" native_error)
+
+  let exec ~program ~argv =
+    match Native.exec program argv with
+    | Ok value -> Ok value
+    | Result.Error native_error ->
+        Result.Error
+          (Plan9_process.error_of_native "Plan9.Raw.exec" native_error)
+end
+
+module Process = Plan9_process.Make (Native)

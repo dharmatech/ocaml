@@ -8,7 +8,8 @@ ocamlc -I +plan9 plan9.cma program.ml -o program
 ```
 
 That normal link does not require `-custom`, `-use-runtime`, C stubs, a C
-compiler, or a linker.
+compiler, or a linker. On the Plan 9 target, the standard `ocamlrun` provides
+the native process primitives used by the ML-only archive.
 
 ## `Plan9.Env`
 
@@ -51,6 +52,59 @@ This phase deliberately relies on the existing runtime's file-I/O path. It
 does not claim that the runtime or executable is APE-free. `Sys`, `Unix`,
 `Sys.command`, and `Unix.putenv` retain their existing portable behavior.
 
+## `Plan9.Raw`
+
+`Plan9.Raw.copy_environment ()` is the only public current-process rfork
+operation. It performs exactly `rfork(RFENVG)`, creates no child, and accepts
+no caller-supplied mask.
+
+`Plan9.Raw.exec ~program ~argv` directly replaces the current process and
+preserves the caller's exact nonempty argument vector, including `argv.(0)`.
+It performs no PATH search, shell expansion, quoting, or APE process dispatch.
+An empty program or vector, embedded NUL, malformed primitive value, or
+unrepresentable native length is rejected before native exec.
+
+There is no public raw waiter, integer rfork-mask operation, child-returning
+rfork path, `RFMEM`, `RFNOWAIT`, or `RFNOMNT` facility.
+
+## `Plan9.Process`
+
+`Plan9.Process.spawn` synthesizes literal `argv.(0)` from `program`;
+`Plan9.Process.run` drives the same synchronous wait coordinator. Both use the
+fixed native policy `RFPROC | RFFDG | RFREND`, followed immediately by direct
+exec in the nonreturning child. Output is initially limited to inherited
+stdout or a parent-opened truncate-file destination.
+
+Every post-rfork nonterminal result retains its stable logical process handle.
+The native pending-child record is allocated before rfork and published as
+the first positive-PID parent action. The logical identity is never reused,
+so wait records are routed without attaching an unknown completion to a
+later process after kernel PID reuse.
+
+The coordinator owns the native wait queue synchronously while managed or
+native-pending owners remain. Successful spawn does not create a background
+reaper. A particular wait retains unknown-PID completions in a bounded FIFO;
+a full FIFO is retryable backpressure and consumes no additional native
+record. `wait_any` returns queued foreign records before awaiting, and
+`take_foreign_completions` drains them in order.
+
+Exact native `no living children` terminalizes every adopted and native
+pending owner as queue loss. Interruption consumes neither a completion nor
+the managed handle. Invariant and malformed-record failures remain distinct
+failed-closed states, preserve unresolved ownership, and prevent further
+native await.
+
+The error handshake is a bounded, versioned `P9E1` frame. Descriptor
+preparation remains correct when the pipe or output file initially occupies
+descriptor 0, 1, or 2. Native wait timing fields are the measured unsigned
+32-bit millisecond values zero-extended into OCaml `int64`; the complete
+native status string is preserved.
+
+Mixing `Plan9.Process` ownership with `Sys.command`, `Unix.wait`, APE wait
+functions, or any other wait consumer is unsupported until every managed and
+native-pending owner is terminal. The containing runtime remains APE-linked;
+only this process boundary uses the direct Plan 9 syscall entries.
+
 ## Focused test
 
 On a configured Plan 9 source tree:
@@ -59,11 +113,51 @@ On a configured Plan 9 source tree:
 "$MAKE" -C otherlibs/plan9 TEST_SUFFIX=phase1_manual_001 test
 ```
 
-The test covers absent, empty, scalar, list, unterminated, live reread, set,
-remove, invalid-name, invalid-element, arbitrary-byte, and `fn#...` behavior.
+The command runs five suites:
+
+- the live `/env` suite covers absent, empty, scalar, list, unterminated,
+  live reread, set, remove, invalid-name, invalid-element, arbitrary-byte, and
+  `fn#...` behavior;
+- a pure-ML fake backend deterministically covers argv0 synthesis,
+  out-of-order routing, memoized waits, interruption, adoption, queue loss,
+  foreign FIFO backpressure, queued-first `wait_any`, failed-closed malformed
+  records, and `run`;
+- primitive-forgery tests call every built-in entry point with malformed
+  values and verify fail-before-native-work validation, including all
+  forbidden rfork bits;
+- a private header-only P9E1 codec suite drives the same writer and decoder
+  used by the runtime through partial writes, clean EOF, one-byte reads, I/O
+  failure, truncation, invalid tag and length, trailing data, and invalid
+  callback-count cases; and
+- a native integration suite uses bounded test-only helpers to cover RFENVG
+  isolation, literal high-level and raw argv, missing and invalid exec,
+  inherited and truncate-file stdout, every nonempty descriptor-hole mask
+  over descriptors 0, 1, and 2, out-of-order completion routing, terminal
+  memoization, native status and timing fields, `run`, known exec-failure
+  cleanup, and clean descriptor/child postconditions.
+
 Use a new 1-40 character ASCII letter, digit, or underscore suffix for each
-run. The test cleans up its two resulting `/env` names on both success and
-failure.
+run. The environment test cleans up its two resulting `/env` names on both
+success and failure. The integration suite likewise uses only suffix-scoped
+temporary files and an environment name and removes them at closeout.
+
+The native helper and frame-codec executable are test artifacts only. They
+are neither added to `plan9.cma` nor installed, and ordinary Plan9 consumers
+still need no C compiler, linker, `-custom`, or alternate runtime. Actual
+asynchronous note delivery remains outside the ordinary deterministic suite.
+The same repository-owned helper and integration executable provide the
+bounded, opt-in wait-interruption evidence driver:
+
+```sh
+"$MAKE" -C otherlibs/plan9 test-native-interruption
+```
+
+It starts one managed short-lived child, sends `interrupt` only to its parent
+after a bounded delay, proves that the exact handle survives the interrupted
+native await, retries through the same coordinator, and requires clean
+ownership closeout. Run it only in an explicitly authorized qualification
+gate. Handshake I/O edge cases use the shared private codec suite; no
+production fault switch or independent waiter is added.
 
 ## Accepted Phase 1 validation
 

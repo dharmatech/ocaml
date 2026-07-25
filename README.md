@@ -62,12 +62,15 @@ from the rest of the system until you choose how to bind or expose it.
 /usr/glenda/lib/unix/ocaml-4.14.3/bin/ocaml
 ```
 
-## Native Plan 9 environment API
+## Native Plan 9 API
 
 Plan 9 builds include an ML-only `Plan9` library for programs that deliberately
 want native Plan 9 semantics. `Plan9.Env` reads and mutates the process's live
 `/env` namespace without changing the portable APE-backed `Sys` or `Unix`
-interfaces.
+interfaces. `Plan9.Raw` provides the narrow exact environment-copy and exec
+operations, while `Plan9.Process` provides direct managed process execution
+and synchronous native wait ownership. The standard Plan 9 `ocamlrun`
+contains the required primitives.
 
 An installed client uses the library normally:
 
@@ -76,5 +79,5 @@ ocamlc -I +plan9 plan9.cma program.ml -o program
 ```
 
 This does not require `-custom`, `-use-runtime`, C stubs, a C compiler, or a
-linker. See `otherlibs/plan9/README.md` for the value encoding, validation,
-error, and removal semantics.
+linker. See `otherlibs/plan9/README.md` for the environment representation,
+process ownership model, validation, errors, and qualification boundary.

@@ -13,27 +13,75 @@
 #**************************************************************************
 
 LIBNAME=plan9
-CAMLOBJS=plan9.cmo
+CAMLOBJS=plan9_process.cmo plan9.cmo
+CMIFILES=plan9.cmi
 INSTALL_LIBDIR_SUFFIX=/plan9
 
-TEST_PROGRAM=tests/env_test$(EXE)
+ENV_TEST_PROGRAM=tests/env_test$(EXE)
+PROCESS_STATE_TEST_PROGRAM=tests/process_state_test$(EXE)
+PROCESS_PRIMITIVE_TEST_PROGRAM=tests/process_primitive_validation_test$(EXE)
+PROCESS_NATIVE_TEST_PROGRAM=tests/process_native_integration_test$(EXE)
+PROCESS_NATIVE_HELPER=tests/process_native_helper$(EXE)
+PROCESS_NATIVE_HELPER_OBJECT=tests/process_native_helper.$(O)
+PROCESS_FRAME_TEST_PROGRAM=tests/process_frame_parser_test$(EXE)
+PROCESS_FRAME_TEST_OBJECT=tests/process_frame_parser_test.$(O)
+ML_TEST_PROGRAMS=$(ENV_TEST_PROGRAM) $(PROCESS_STATE_TEST_PROGRAM) \
+  $(PROCESS_PRIMITIVE_TEST_PROGRAM) $(PROCESS_NATIVE_TEST_PROGRAM)
+NATIVE_TEST_PROGRAMS=$(PROCESS_NATIVE_HELPER) $(PROCESS_FRAME_TEST_PROGRAM)
+TEST_PROGRAMS=$(ML_TEST_PROGRAMS) $(NATIVE_TEST_PROGRAMS)
 TEST_SUFFIX?=manual
-CLEANFILES=$(TEST_PROGRAM) tests/*.cmi tests/*.cmo
+CLEANFILES=$(TEST_PROGRAMS) $(PROCESS_NATIVE_HELPER_OBJECT) \
+  $(PROCESS_FRAME_TEST_OBJECT) tests/*.cmi tests/*.cmo
 
 include ../Makefile.otherlibs.common
 
-plan9.cmo: plan9.cmi
-plan9.cmx: plan9.cmi
+plan9.cmo: plan9.cmi plan9_process.cmi
+plan9.cmx: plan9.cmi plan9_process.cmx
 
-.PHONY: depend test
+.PHONY: depend test test-native-interruption
 
 depend:
 	$(OCAMLRUN) $(ROOTDIR)/boot/ocamlc -depend -slash *.mli *.ml > .depend
 
-test: all $(TEST_PROGRAM)
-	$(OCAMLRUN) ./$(TEST_PROGRAM) '$(TEST_SUFFIX)'
+test: all $(TEST_PROGRAMS)
+	$(OCAMLRUN) ./$(ENV_TEST_PROGRAM) '$(TEST_SUFFIX)'
+	$(OCAMLRUN) ./$(PROCESS_STATE_TEST_PROGRAM)
+	$(NEW_OCAMLRUN) ./$(PROCESS_PRIMITIVE_TEST_PROGRAM)
+	./$(PROCESS_FRAME_TEST_PROGRAM)
+	$(NEW_OCAMLRUN) ./$(PROCESS_NATIVE_TEST_PROGRAM) \
+	  '$(NEW_OCAMLRUN)' './$(PROCESS_NATIVE_TEST_PROGRAM)' \
+	  './$(PROCESS_NATIVE_HELPER)' '$(TEST_SUFFIX)'
 
-$(TEST_PROGRAM): tests/env_test.ml plan9.cma plan9.cmi
+test-native-interruption: all $(PROCESS_NATIVE_TEST_PROGRAM) \
+    $(PROCESS_NATIVE_HELPER)
+	$(NEW_OCAMLRUN) ./$(PROCESS_NATIVE_TEST_PROGRAM) \
+	  --qualification-wait-interruption './$(PROCESS_NATIVE_HELPER)'
+
+$(ENV_TEST_PROGRAM): tests/env_test.ml plan9.cma plan9.cmi
 	$(CAMLC) -I . plan9.cma tests/env_test.ml -o $@
+
+$(PROCESS_STATE_TEST_PROGRAM): tests/process_state_test.ml \
+    plan9_process.cmo
+	$(CAMLC) -I . plan9_process.cmo tests/process_state_test.ml -o $@
+
+$(PROCESS_PRIMITIVE_TEST_PROGRAM): \
+    tests/process_primitive_validation_test.ml plan9.cma plan9.cmi
+	$(CAMLC) -I . plan9.cma \
+	  tests/process_primitive_validation_test.ml -o $@
+
+$(PROCESS_NATIVE_TEST_PROGRAM): \
+    tests/process_native_integration_test.ml plan9.cma plan9.cmi
+	$(CAMLC) -I . plan9.cma \
+	  tests/process_native_integration_test.ml -o $@
+
+$(PROCESS_NATIVE_HELPER): $(PROCESS_NATIVE_HELPER_OBJECT)
+	$(call MKEXE_USING_COMPILER,$@,$^)
+
+$(PROCESS_FRAME_TEST_PROGRAM): $(PROCESS_FRAME_TEST_OBJECT)
+	$(call MKEXE_USING_COMPILER,$@,$^)
+
+$(PROCESS_FRAME_TEST_OBJECT): \
+    tests/process_frame_parser_test.c \
+    $(ROOTDIR)/runtime/plan9_process_frame.h
 
 include .depend

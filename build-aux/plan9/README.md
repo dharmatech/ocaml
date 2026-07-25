@@ -59,9 +59,11 @@ bytecode-focused Plan 9 port. It defaults to:
   debugger, ocamldoc, ocamltest, and dependency generation
 - `--enable-imprecise-c99-float-ops`
 
-The Plan 9 target also selects the ML-only `plan9` otherlib. Installation puts
+The Plan 9 target also selects the ML-only `plan9` otherlib and includes its
+native process primitives in the standard Plan 9 runtime. Installation puts
 `plan9.cma` and `plan9.cmi` beneath `$(ocamlc -where)/plan9`, for normal use as
-`ocamlc -I +plan9 plan9.cma ...`.
+`ocamlc -I +plan9 plan9.cma ...`; consumers do not use `-custom` or a
+dedicated `-use-runtime`.
 
 `MAKE`, `CC`, and `CPPFLAGS` can be overridden through the environment. Extra
 arguments are passed to `./configure`, so a test prefix can be selected with:
@@ -79,15 +81,25 @@ build-aux/plan9/build-world.sh
 The wrapper sets the repo-local shim `PATH`, honors `MAKE` if it is already
 set, and otherwise uses `/usr/glenda/lib/unix/bin/gmake`.
 
-The focused source-tree environment test is:
+The focused source-tree Plan 9 tests are:
 
 ```sh
 "$MAKE" -C otherlibs/plan9 TEST_SUFFIX=phase1_manual_001 test
 ```
 
-Supply a new suffix for each run. The test accepts only 1-40 ASCII letters,
-digits, or underscores, mutates only the two resulting dedicated names in the
-test process's `/env`, and removes both names on success or failure.
+Supply a new suffix for each run. The environment suite accepts only 1-40
+ASCII letters, digits, or underscores, mutates only the two resulting
+dedicated names in the test process's `/env`, and removes both names on
+success or failure. The same target also runs the deterministic pure-ML
+process coordinator tests, malformed primitive-call validation, the shared
+P9E1 frame codec suite, and bounded native process integration tests through
+the freshly built runtime. The test-only native helpers are not linked into or
+installed with `plan9.cma`; ordinary consumers still require no C tools.
+Actual asynchronous note interruption remains part of the separately
+authorized compiler-lab evidence rather than the ordinary deterministic
+suite. The repository-owned bounded driver for that explicit observation is
+`"$MAKE" -C otherlibs/plan9 test-native-interruption`; it adds no production
+fault switch or independent waiter.
 
 ## Install
 
