@@ -245,12 +245,14 @@ module Process : sig
     ?stdout:stdout ->
     program:string ->
     args:string array ->
+    unit ->
     (launch, error) result
 
   val run :
     ?stdout:stdout ->
     program:string ->
     args:string array ->
+    unit ->
     (run, error) result
 
   val id : t -> process_id
@@ -279,8 +281,9 @@ backpressure, invariant failure, and malformed-record failure produce
 `Run_wait_queue_lost` carries the exact wait error and also the exact exec
 error when the child had already reported one.
 
-`spawn` and `run` accept arguments after `argv[0]`. They construct the exact
-native vector:
+`spawn` and `run` take a final unit argument so the optional `stdout`
+argument remains erasable. They accept arguments after `argv[0]` and construct
+the exact native vector:
 
 ```text
 argv = [| program; args.(0); ...; args.(n - 1) |]
@@ -313,9 +316,9 @@ Production spawn uses one private C primitive:
 
 The fixed flags copy the file-descriptor group and create the process and
 rendezvous group while sharing the deliberately selected environment,
-namespace, and note groups. Phase 2 does not expose `RFNOMNT`; it may interfere
-with the preferred `#d/<fd>` handshake reopening and requires a separate
-future sandboxing design.
+namespace, and note groups. Phase 2 does not expose `RFNOMNT`. The installed
+ABI retains `#d/<fd>` under that flag, but its broader namespace-sandbox policy
+remains unselected and requires a separate future design.
 
 The parent-side ML coordinator creates the handle, installs its active PID
 mapping, and then acknowledges adoption by process ID. Only that
