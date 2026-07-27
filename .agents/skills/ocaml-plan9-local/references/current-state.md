@@ -1,6 +1,6 @@
 # OCaml Plan 9 local current state
 
-Last recorded: 2026-07-25 08:13:08 -07:00 America/Los_Angeles
+Last recorded: 2026-07-25 18:36:10 -07:00 America/Los_Angeles
 
 Origin profile: Dharmatech Windows/QEMU development host
 
@@ -125,14 +125,18 @@ fallback.
 ```text
 VM root: C:\Users\dharm\vm\ocaml
 mutable instance: C:\Users\dharm\vm\ocaml\dev
-instance state: halted after accepted Phase 2 incremental build and tests
+instance state:
+  running after accepted exact-source qualification, dev-002 installation,
+  installed-consumer validation, and RC001 packaging
 assigned address: 127.0.0.40
 forwarded endpoints: 17010, 17019, 17020, 17021, 17022, 17564, 17567
-endpoint state: all seven closed and bindable
-P9QEMU shim PID: none
-console PID: none
-Python PIDs: none
-QEMU PID: none
+endpoint state:
+  QEMU PID 10892 owned all seven at the final RC001 post-copy check; revalidate
+  live before acting
+P9QEMU shim PID: 35220 at launch
+console PID: none recorded
+Python PIDs: 36204 and 28120 at launch
+QEMU PID: 10892 at launch
 accepted native development tree:
   /usr/glenda/src/ocaml-plan9-phase1-completion-001-build-004/
     ocaml-plan9-phase1-env-completion-001-build004
@@ -143,15 +147,23 @@ incremental tree state:
   fully built Phase 1 seed plus the reviewed Phase 2 candidate and incremental
   corrections; world build, all five focused suites, warning-clean rerun, and
   handled native interruption test passed
+exact-source GitHub qualification tree:
+  /usr/glenda/src/ocaml-plan9-phase2-github-qualification-001
+exact-source tree state:
+  commit d8ec53e72a09d4ff9532778d4dfd0c6b87cb83f2, configured and fully
+  built; focused, interruption, and broader upstream tests passed; retained
+  intentionally with all build products as the incremental correction base
 first experimental prefix:
   /usr/glenda/lib/unix/ocaml-4.14.3-plan9-dev-001
 prefix state: installed and accepted for this experiment
-proposed second experimental prefix:
+second experimental prefix:
   /usr/glenda/lib/unix/ocaml-4.14.3-plan9-dev-002
-second-prefix state: absent; no installation was attempted
+second-prefix state:
+  installed and accepted; 338 files; installed consumer passed without source
+  visibility, `-custom`, an alternate runtime, or a consumer C tool
 known-working prefix:
   /usr/glenda/lib/unix/ocaml-4.14.3
-raw evidence:
+accepted incremental-setup evidence:
   C:\Users\dharm\vm\ocaml\evidence\
     plan9-phase-2-process-primitives-incremental-setup-001\attempt-001
 latest correction/transfer evidence:
@@ -160,12 +172,10 @@ latest correction/transfer evidence:
       attempt-001
 serial log:
   C:\Users\dharm\vm\ocaml\evidence\
-    plan9-phase-2-process-primitives-incremental-setup-001\
+    plan9-phase-2-process-primitives-github-qualification-001\
       attempt-001\serial.raw.log
 serial state:
-  final bytes: 2103
-  final SHA-256:
-    3a6cefdb47aa08e0bd2a932b7abcad8d327af27b11884bda622f3da5183f6538
+  active while .40 remains running; do not treat size or hash as final
 ```
 
 The known-working compiler was used only for bounded read-only inventory and
@@ -1790,56 +1800,991 @@ selected only `whpx,kernel-irqchip=off`, the exact `.40` address and seven
 forwards, and the accepted instance. It created no serial file and launched no
 process.
 
+## GitHub qualification launch and source-acquisition preparation
+
+The user selected a fresh GitHub clone of the published qualification branch
+as the next source-origin validation. This is a deliberate qualification
+variant from the tracked exact-index-archive procedure. Windows remains the
+authoritative editing and publication repository; the native git9 checkout
+will be a build input, not a competing development repository.
+
+Live Windows Git was clean before launch:
+
+```text
+branch: codex/plan9-phase2-process-primitives-qualification
+HEAD and upstream: d8ec53e72a09d4ff9532778d4dfd0c6b87cb83f2
+implementation parent: c8345f28a1be5d59b0ebcc93544e6a6aaa172984
+remote: https://github.com/dharmatech/ocaml.git
+```
+
+Only `C:\Users\dharm\vm\ocaml\dev` was launched at `127.0.0.40`.
+The non-launching dry run and live command line selected only
+`whpx,kernel-irqchip=off`, with no TCG fallback:
+
+```text
+P9QEMU PID: 35220
+Python PIDs: 36204 and 28120
+QEMU PID: 10892
+listeners: QEMU PID 10892 owns 17010, 17019, 17020, 17021, 17022,
+  17564, and 17567 on 127.0.0.40
+serial:
+  C:\Users\dharm\vm\ocaml\evidence\
+    plan9-phase-2-process-primitives-github-qualification-001\
+      attempt-001\serial.raw.log
+```
+
+A bounded Drawterm readiness command returned `OCAML_PLAN9_READY`. The user
+then reported an interactive Drawterm connection to `.40`. The OCaml task
+remains the sole stateful operator; the user's inspection does not transfer
+ownership.
+
+The source-acquisition script preparation retained two host-only procedural
+rejections before accepted attempt 003. Attempt 001 used a wildcard with
+PowerShell's literal hash mode after copying the host evidence files. Attempt
+002 discovered that native rc `test -e` emits diagnostics for expected
+absence unless stderr is suppressed. Neither attempt transferred a script,
+contacted GitHub, created the native source destination, or started a clone.
+
+Accepted attempt 003 copied and verified these executable native scripts:
+
+```text
+/tmp/plan9-phase2-github-source-acquisition-driver-001.rc
+  bytes: 3680
+  SHA-1: 46e1907dc410a52ad943fd18d63fb4ba10999cfe
+  SHA-256:
+    f28bdb5d6726cbdf9849bfe47be262eb292b25762d0308db4185aaeb15ea2aa5
+
+/tmp/plan9-phase2-github-source-acquisition-001.rc
+  bytes: 946
+  SHA-1: 3d8c4ae2b3515728c7cb0141ec05e20ecb6d4384
+  SHA-256:
+    9517281e816bca1e6fdb675931fc5099e692493d276524c36f6138d58e29dfc3
+```
+
+The driver's non-cloning `--check` mode passed. It parsed under native rc,
+resolved the installed git9 and verification tools, required the exact
+published branch tip and implementation parent, and confirmed the destination
+was absent. Final validation found the launcher log, status, lock, and
+destination absent:
+
+```text
+/tmp/plan9-phase2-github-source-acquisition-001.log
+/tmp/plan9-phase2-github-source-acquisition-001.status
+/tmp/plan9-phase2-github-source-acquisition-001.lock
+/usr/glenda/src/ocaml-plan9-phase2-github-qualification-001
+```
+
+At script-delivery closeout, the scripts had not been run in acquisition mode.
+No GitHub contact, clone, configure, build, test, installation, prefix
+mutation, checkpoint, or source edit had occurred. Accepted raw delivery
+evidence is retained at:
+
+```text
+C:\Users\dharm\vm\ocaml\evidence\
+  plan9-phase-2-process-primitives-github-source-acquisition-script-001\
+    attempt-003
+```
+
+### Rejected GitHub source-acquisition attempt 001
+
+The user then ran
+`/tmp/plan9-phase2-github-source-acquisition-001.rc` from the interactive
+`.40` Drawterm session. The driver started git9 with the exact public remote,
+branch, expected tip, parent, and destination, but git9's HTTPS transport
+could not open its required webfs allocation file:
+
+```text
+git/get: could not dial https://github.com/dharmatech/ocaml.git:
+  file does not exist: '/mnt/web/clone'
+/bin/git/clone: could not clone repository
+SOURCE_ACQUISITION_FAILURE git clone failed with status
+  clone 768: clone 775: could not clone repository
+```
+
+Git9 cleaned
+`/usr/glenda/src/ocaml-plan9-phase2-github-qualification-001`.
+The launcher removed its exact lock and retained its log and status:
+
+```text
+/tmp/plan9-phase2-github-source-acquisition-001.log
+  SHA-1: 2acbdfcde8bda18c9acdd599e5fb505591c3ef0c
+/tmp/plan9-phase2-github-source-acquisition-001.status
+  SHA-1: 86ad8a6dc0ade506b161d9f7c70becc514dfec8c
+```
+
+The status text is
+`plan9-phase2-github-source-acquisition-driver-001.rc 751:
+source-acquisition-failed`. The destination and lock are absent. No checkout,
+configure, build, test, installation, prefix mutation, or source edit
+occurred. The rejected attempt is preserved at:
+
+```text
+C:\Users\dharm\vm\ocaml\evidence\
+  plan9-phase-2-process-primitives-github-source-acquisition-001\
+    attempt-001
+```
+
+Installed `webfs(4)` states that `webfs` mounts itself at `/mnt/web` by
+default and provides `clone` at the top level. The installed source calls
+`postmountsrv` after creating its note group; lib9p mounts the pipe-backed
+server into the caller's namespace and forks the server with its own name and
+note groups. A later independent `.40` Drawterm namespace observed a webfs
+process but no `/mnt/web/clone`, confirming that process existence alone does
+not provide the mount to another namespace.
+
+The qualification driver should therefore create a private namespace with
+`rfork en`, start `webfs -m /mnt/web` inside that same namespace only when
+`/mnt/web/clone` is absent, verify the clone file, then invoke git9. This keeps
+the network filesystem requirement explicit and reproducible without adding
+ambient qualification state to Glenda's profile. It is a source-backed
+inference that the private mount connection will close and its server will
+terminate when the driver namespace exits; the corrected attempt must verify
+that no new webfs process remains.
+
+### Corrected GitHub source-acquisition script preparation
+
+The user authorized the `-002` correction and delivery. Accepted attempt 001
+prepared and copied:
+
+```text
+/tmp/plan9-phase2-github-source-acquisition-driver-002.rc
+  bytes: 4262
+  SHA-1: 7e5986411e9636bca5de383b89598c1fc10b8a86
+  SHA-256:
+    ac5e123fe8a18aed4e3b7d3861aa42498beb2b3857910b1d4799cc30f9f65ac8
+
+/tmp/plan9-phase2-github-source-acquisition-002.rc
+  bytes: 1193
+  SHA-1: f3a25658a72954880c1ba593c0e03f49de7d42ee
+  SHA-256:
+    cdad07c3aec8169e61ce6ff98b75fbd6d463db830cbd2c7a4aa93eea1f439629
+```
+
+The corrected driver uses `rfork en`. In acquisition mode it starts
+`/bin/webfs -m /mnt/web` only when `/mnt/web/clone` is absent in that private
+namespace, verifies the clone file, then invokes git9. After clone it starts a
+private `git/fs` before the branch, history, gitlink, and clean-tree checks.
+The launcher records webfs process snapshots before the driver, immediately
+after it exits, and after a one-second settle interval.
+
+The driver's non-cloning `--check` mode passed under native rc. It started no
+webfs, contacted no network, and created no destination. Final delivery
+validation found no webfs process and found all of these paths absent:
+
+```text
+/tmp/plan9-phase2-github-source-acquisition-002.log
+/tmp/plan9-phase2-github-source-acquisition-002.status
+/tmp/plan9-phase2-github-source-acquisition-002.lock
+/usr/glenda/src/ocaml-plan9-phase2-github-qualification-001
+```
+
+Accepted preparation evidence is retained at:
+
+```text
+C:\Users\dharm\vm\ocaml\evidence\
+  plan9-phase-2-process-primitives-github-source-acquisition-resume-001\
+    attempt-001
+```
+
+### GitHub source acquisition runs and retained checkout
+
+The user ran `/tmp/plan9-phase2-github-source-acquisition-002.rc` twice.
+During the first run the private webfs mount became ready, but git9's HTTPS
+request ended with:
+
+```text
+git/get: could not dial https://github.com/dharmatech/ocaml.git:
+  0 No status interrupted: '/mnt/web/0/body'
+```
+
+Git9 cleaned the destination and the private webfs process did not remain.
+The user then ran `echo ipv6 >/net/cs`. The user reports that this toggles
+IPv6 lookup handling for the whole running Plan 9 system, does not survive a
+reboot, and would reverse the setting if run a second time. This is recorded
+as a user-performed, system-global operational workaround. It must not be
+placed blindly in a rerunnable acquisition script. Any durable boot policy
+requires separate source-backed analysis and authorization.
+
+The second run cloned and checked out the repository, indexed 179793 objects,
+and reached `GIT_FS_READY`. Its post-clone required-path loop then failed
+because it reused `path`, rc's executable-search variable, as the loop
+variable. On the first item rc therefore attempted to resolve `test` and then
+the failure handler's `echo` beneath `README.md`:
+
+```text
+test: not a directory: 'README.md'
+echo: not a directory: 'README.md'
+```
+
+The launcher correctly retained the checkout and removed its lock. Its
+post-clone verification failure is recorded in:
+
+```text
+/tmp/plan9-phase2-github-source-acquisition-002.log
+  SHA-1: 1248519e19942f6fdb0ac9bc84ad4c2a8fdcb202
+/tmp/plan9-phase2-github-source-acquisition-002.status
+  SHA-1: c38e7cdf975729544cca9e97cb986276d17382f6
+  text:
+    plan9-phase2-github-source-acquisition-driver-002.rc 1567:
+      source-acquisition-failed
+```
+
+A separate read-only Drawterm verification started a private `git/fs` in the
+retained checkout and established:
+
+```text
+destination:
+  /usr/glenda/src/ocaml-plan9-phase2-github-qualification-001
+branch:
+  heads/codex/plan9-phase2-process-primitives-qualification
+HEAD:
+  d8ec53e72a09d4ff9532778d4dfd0c6b87cb83f2
+parent:
+  c8345f28a1be5d59b0ebcc93544e6a6aaa172984
+required source paths: present
+flexdll gitlink directory: empty
+tracked changes: none
+untracked paths: none
+source-acquisition lock: absent
+remaining webfs processes: none
+```
+
+The clone itself is therefore an exact, clean source acquisition. The
+`-002` launcher result is not accepted as a fully passing evidence-driver run
+because its verifier failed after checkout. Do not delete or reclone the
+retained exact checkout merely to correct that procedural defect.
+
+### Verification-only correction result
+
+The verification-only correction scripts are prepared:
+
+```text
+/tmp/plan9-phase2-github-source-verification-driver-003.rc
+  bytes: 3543
+  SHA-1: ca8b69e92ea9f897937dab9c092f3376d0c2387a
+  SHA-256:
+    90515ad0bb431a890e382bfc40dca1f117f2a7908352cc1d4b56c6fbf5edfcc3
+
+/tmp/plan9-phase2-github-source-verification-003.rc
+  bytes: 1131
+  SHA-1: 0c93c066116acad9884d3fb7aac550bea99df587
+  SHA-256:
+    c11ad8025d955951405ca66ded89a3be1ecf86d4d51ca696c2ce2090e7035379
+```
+
+Both use nonspecial loop variables. The driver performs no network operation,
+does not start webfs, and does not write the checkout. Its non-running
+`--check` mode passed against the retained destination. The distinct `-003`
+log, status, and lock paths were absent after preparation. The initial
+headless transfer path through the Windows user profile was inaccessible and
+created no guest target; the accepted transfer used two hash-matched temporary
+files beneath `C:\temp`, then removed only those verified transfer copies.
+Host evidence copies are retained at:
+
+```text
+C:\Users\dharm\vm\ocaml\evidence\
+  plan9-phase-2-process-primitives-github-source-verification-correction-001\
+    attempt-001
+```
+
+The user ran:
+
+```rc
+/tmp/plan9-phase2-github-source-verification-003.rc
+```
+
+The result is accepted. It returned status `0` and finished with
+`SOURCE_VERIFICATION_READY`. The log recorded `NETWORK none`, the exact
+published branch, tip, and parent, the required source hashes, an empty
+`flexdll` representation, and no tracked or untracked path. The launcher
+removed its lock and neither the before nor after snapshot nor a separate
+live check found a webfs process:
+
+```text
+/tmp/plan9-phase2-github-source-verification-003.log
+  SHA-1: 4124b958915ea4f34866f1e36ae8db843b1b2cc0
+/tmp/plan9-phase2-github-source-verification-003.status
+  SHA-1: 09d2af8dd22201dd8d48e5dcfcaed281ff9422c7
+  text: 0
+```
+
+The guest log and status remain in `/tmp`. A bounded attempt to copy them
+through the headless Drawterm `/mnt/term/C:/temp` mount was denied before
+creating either destination, so the host evidence attempt retains the scripts
+and the tracked record retains the output identities and conclusions.
+
+Read-only qualification preflight confirmed that the production prefix and
+accepted Phase 1 prefix exist, while the intended isolated Phase 2 prefix is
+absent:
+
+```text
+/usr/glenda/lib/unix/ocaml-4.14.3
+/usr/glenda/lib/unix/ocaml-4.14.3-plan9-dev-001
+ABSENT /usr/glenda/lib/unix/ocaml-4.14.3-plan9-dev-002
+GNU Make:
+  /usr/glenda/lib/unix/make-4.4.1/bin/make
+```
+
+## Exact-source GitHub qualification
+
+The recommended next separately authorized action is
+`plan9-phase-2-process-primitives-github-native-qualification-preparation-001`.
+The first preparation step produced and verified:
+
+```text
+/tmp/plan9-phase2-github-qualification-preflight-driver-001.rc
+  bytes: 3725
+  SHA-1: 3f16b044967f3036ce19e73c390d61723184537b
+  SHA-256:
+    51ae054e4f04a567bc05fe98ae22d2d1c14af0cb975d6069bdebc98b2068d7be
+
+/tmp/plan9-phase2-github-qualification-preflight-001.rc
+  bytes: 1115
+  SHA-1: 32fb53c7aeade8c57f0104655aa0487d62f17f37
+  SHA-256:
+    aa504066aeb7fab28dc2c57aaad3e674659557eb47c63b8676cc06be3ec5e86a
+```
+
+The driver's non-running `--check` mode passed. It confirmed the retained
+source, production and Phase 1 prefixes, absent dev-002 prefix, exact
+source-verification driver, GNU Make, APE shell, git9 and inventory tools,
+unconfigured source tree, and collision-free preflight evidence paths. It
+performed no inventory, configure, build, network, prefix, or source mutation.
+Host evidence copies are retained at:
+
+```text
+C:\Users\dharm\vm\ocaml\evidence\
+  plan9-phase-2-process-primitives-github-native-qualification-preparation-001\
+    attempt-001
+```
+
+The user ran:
+
+```rc
+/tmp/plan9-phase2-github-qualification-preflight-001.rc
+```
+
+The preflight is accepted. It returned status `0`, finished with
+`QUALIFICATION_PREFLIGHT_READY`, and ran from 16:53:28 through 16:53:34 GMT.
+It reverified the exact branch, tip, parent, required source hashes, empty
+gitlink, and clean checkout. GNU Make identified itself as 4.4.1 built for
+`x86_64-unknown-plan9`, and the APE shell resolved `c89` as `/bin/c89`.
+
+The production-prefix inventories both contain 336 files:
+
+```text
+/tmp/plan9-phase2-github-qualification-preflight-001.log
+  SHA-1: 13abbee12a438ed1c686af224c79bd8ec147057a
+/tmp/plan9-phase2-github-qualification-preflight-001.status
+  SHA-1: 09d2af8dd22201dd8d48e5dcfcaed281ff9422c7
+  text: 0
+/tmp/plan9-phase2-github-qualification-preflight-001-a001/
+  production-layout-before.txt
+    SHA-1: e871b8a897976a13aa8f4b8283acc61a48e349fe
+  production-sha1-before.txt
+    SHA-1: 06bacc059c59a928ae69df5bee1e084772b8b77e
+```
+
+The preflight lock is absent, dev-002 remains absent, and `config.status` and
+`Makefile.config` remain absent from the exact source. No configure, build,
+install, network, or compiler-prefix mutation occurred.
+
+The configure-only scripts are prepared and verified:
+
+```text
+/tmp/plan9-phase2-github-qualification-configure-driver-001.sh
+  bytes: 5200
+  SHA-1: f20f4e565f3d75dda31e0f491f889720eda9a4ec
+  SHA-256:
+    455f1fe78f5cdfbf95d411faf340612e69606a5a2ca5349e2e18dab14bb7002c
+
+/tmp/plan9-phase2-github-qualification-configure-001.rc
+  bytes: 163
+  SHA-1: a1ef3ab18fd5901d282679c6c1accb960bdc1cc2
+  SHA-256:
+    72b0043b21e7db6a4da0b8a5d5de593412d88a04d428f5f844a3367c8ee9e6ad
+```
+
+The rc launcher enters the exact source and executes the driver under
+`ape/psh`. The driver reruns the exact source verifier before mutation, sets
+and exports GNU Make and `CC=c89`, invokes only the Plan 9 configure wrapper
+for dev-002, and records human timestamps, numeric `date -n` timestamps,
+elapsed seconds, and `HH:MM:SS`. On success it retains exact copies and hashes
+of `config.status` and `Makefile.config`, records selected configuration
+fields, and stops before Make.
+
+Its non-running `--check` mode passed. It confirmed the accepted preflight,
+production inventories, absent dev-002 prefix, unconfigured exact source, and
+collision-free configure log, status, lock, and evidence paths. Host evidence
+copies are in the existing preparation attempt.
+
+The user ran:
+
+```rc
+/tmp/plan9-phase2-github-qualification-configure-001.rc
+```
+
+The configure result is accepted. It returned status `0`, finished with
+`QUALIFICATION_CONFIGURE_READY`, and measured exactly eight seconds:
+
+```text
+/tmp/plan9-phase2-github-qualification-configure-001.log
+  SHA-1: d31952744361167cdb09d903798b1ab077c168db
+/tmp/plan9-phase2-github-qualification-configure-001.status
+  SHA-1: 09d2af8dd22201dd8d48e5dcfcaed281ff9422c7
+  text: 0
+/tmp/plan9-phase2-github-qualification-configure-001-a001/
+  config.status
+    SHA-1: f521deda0dee8a793b860d860d4ac500c3729e83
+  Makefile.config
+    SHA-1: 0d003860a9b2a2b0da27b6423d783fe482cf945f
+
+CONFIGURE_START_EPOCH=1784999263
+CONFIGURE_END_EPOCH=1784999271
+CONFIGURE_ELAPSED_SECONDS=8
+CONFIGURE_ELAPSED_HMS=00:00:08
+```
+
+The evidence copies match the generated source files. The selected
+configuration is `x86_64-unknown-plan9`, `CC=c89`, native compiler disabled,
+shared libraries disabled, systhreads disabled, and
+`OTHERLIBRARIES=dynlink unix bigarray str plan9`. The configure lock is
+absent, dev-002 remains absent, and the fresh world-build sentinels
+`runtime/ocamlrun`, `ocamlc`, and `otherlibs/plan9/plan9.cma` are absent.
+
+The timed full-world build scripts are prepared and verified:
+
+```text
+/tmp/plan9-phase2-github-qualification-world-build-driver-001.sh
+  bytes: 5287
+  SHA-1: 26873e23518f1d8be5cd65900203deb253184514
+  SHA-256:
+    0b34dd7f595bebab8f4c417b231f07f6f12160661dd850a7f1d6c1574a865f0a
+
+/tmp/plan9-phase2-github-qualification-world-build-001.rc
+  bytes: 165
+  SHA-1: 7f743fbbb89f35b511a9c8772e6642c7b3bd6932
+  SHA-256:
+    d2ef34aef3d7b77ae2f9ec2422e8e566ce26063439495c63f95e692bbc73ca2e
+```
+
+The driver's non-running `--check` mode passed. It pins the accepted
+configuration and critical source hashes, refuses existing build artifacts,
+dev-002, log, status, lock, or evidence paths, and records human and epoch
+times, elapsed seconds, and `HH:MM:SS`. It runs only
+`build-aux/plan9/build-world.sh`; it does not test or install.
+
+The user ran:
+
+```rc
+/tmp/plan9-phase2-github-qualification-world-build-001.rc
+```
+
+The exact world build is accepted. It returned status `0`, finished with
+`QUALIFICATION_WORLD_BUILD_READY`, and measured 2,276 seconds:
+
+```text
+/tmp/plan9-phase2-github-qualification-world-build-001.log
+  SHA-1: f5c00b875295d25468aadc03ddff6f72d675b9e2
+/tmp/plan9-phase2-github-qualification-world-build-001.status
+  SHA-1: 09d2af8dd22201dd8d48e5dcfcaed281ff9422c7
+  text: 0
+/tmp/plan9-phase2-github-qualification-world-build-001-a001/
+  artifact-sha1.txt
+    SHA-1: 69364380914d5f0483f79bd0173cbe93d1bf23d3
+
+WORLD_BUILD_END_EPOCH=1785001881
+WORLD_BUILD_ELAPSED_SECONDS=2276
+WORLD_BUILD_ELAPSED_HMS=00:37:56
+WORLD_BUILD_COMMAND_STATUS=0
+```
+
+The evidence artifact hashes match the live build:
+
+```text
+bfd90e02106473094c2f54dc189217f5daaf32e4  runtime/ocamlrun
+2d65adb530a1dff611715be5b4196aa96821d11f  ocamlc
+b052ca6b994d6d73c8dc36184b928fdfc4f0b6b9  otherlibs/plan9/plan9.cma
+```
+
+No `Error` or `error:` line was found. The lowercase `warning` matches were
+only compiler warning-option arguments or source paths containing
+`warnings`; no emitted warning diagnostic was observed. The build lock is
+absent, dev-002 remains absent, and no install evidence path exists.
+
+The ordinary focused-test scripts are prepared and verified:
+
+```text
+/tmp/plan9-phase2-github-qualification-focused-test-driver-001.sh
+  bytes: 5647
+  SHA-1: 6cad7aa70d74eef46be0bdf42ad4bcb2eb1c2685
+  SHA-256:
+    32466eb71abf14b744fa99aab1bd1e28b460e29f818c05e2b6e1eea7c139c2ac
+
+/tmp/plan9-phase2-github-qualification-focused-test-001.rc
+  bytes: 166
+  SHA-1: b54b2b41921db3dddd0692064ed98c156543a78b
+  SHA-256:
+    309f7f84cfabe20c8ac8a6bf42d54b661be375ef95b755a3bfc92cf9e508adaf
+```
+
+The non-running `--check` mode passed. The driver pins the three accepted
+world-build artifacts, uses unique suffix `p2_github_qual_001`, runs the five
+ordinary suites, validates all five success markers and dedicated `/env`
+cleanup, records test-binary hashes and elapsed time, and keeps native note
+interruption explicitly excluded for its separate step.
+
+The user ran that launcher. The underlying GNU Make test command returned
+zero in 11 seconds, and the log visibly contains all five required markers:
+
+```text
+Plan9.Env tests passed
+process_state_test: passed
+process_primitive_validation_test: passed
+process_frame_parser_test: passed
+process_native_integration_test: passed
+```
+
+The wrapper nevertheless returned status `81` after reporting each marker
+missing:
+
+```text
+/tmp/plan9-phase2-github-qualification-focused-test-001.log
+  SHA-1: 54667a4f3890963459bc7a01e9f5c673848963df
+/tmp/plan9-phase2-github-qualification-focused-test-001.status
+  SHA-1: 35bfc22420a7d20d27504a12743b4856fc0fedf9
+  text: 81
+```
+
+This is a procedural evidence-driver rejection, not a focused implementation
+test failure. The driver prepended the repository shim directory to `PATH` and
+then invoked unqualified `fgrep`. That resolved to
+`build-aux/plan9/shims/bin/fgrep`, which delegates to
+`/tmp/gmake-shims/grep`; its exact marker probes reported no matches. Native
+`/bin/fgrep` finds every marker in the same retained log. The test lock is
+absent, no dedicated test environment name remains, and no install or prefix
+mutation occurred. The driver stopped before writing
+`test-artifact-sha1.txt`, so the test-binary evidence bundle is incomplete.
+
+The corrected resume uses suffix `p2_github_qual_002`, invokes
+`/bin/fgrep` explicitly, and writes only new `focused-test-002` log, status,
+lock, and evidence paths. Its driver and launcher are:
+
+```text
+/tmp/plan9-phase2-github-qualification-focused-test-driver-002.sh
+  bytes: 6989
+  SHA-1: e2ec101fba36ed4139f8246fd8cc0fc25089cfd0
+  SHA-256:
+    531b83ebb9b299f6989c5a328a89c5ef8e5991eb42ade588ed1a5e059571ab10
+/tmp/plan9-phase2-github-qualification-focused-test-002.rc
+  bytes: 166
+  SHA-1: e1d54ac5e12633372b5ba430504f4098cfa5bbe5
+  SHA-256:
+    5092ed51b23e48b7ef5d55df55a95d6088d25af32b45a72564408e8506deb911
+```
+
+Preparation retained three fail-closed procedural attempts. Attempt 001 used
+POSIX `fail()` syntax in a native `rc` delivery wrapper and stopped at line 8
+before copying. Attempt 002 corrected the function syntax but used an
+unquoted `=` as a `test` argument. Native `rc` copied the exact driver and
+launcher before encountering that later syntax error; it ran neither
+`--check` nor tests. Attempt 003 used native `~` comparison and correctly
+refused to overwrite the destinations left by attempt 002.
+
+Accepted preparation attempt 004 used a verification-only wrapper, required
+the two destination hashes above, and ran only the driver's `--check`. The
+check passed and established:
+
+```text
+QUALIFICATION_FOCUSED_TEST_RESUME_CHECK_PASSED
+TEST_SUFFIX=p2_github_qual_002
+MARKER_SCANNER=/bin/fgrep
+PREVIOUS_ATTEMPT=status-81-procedural-rejection-preserved
+INTERRUPTION=excluded-separate-step
+```
+
+It also required the retained status-81 log and status hashes, proved all five
+old markers through `/bin/fgrep`, pinned the accepted world artifacts, found
+dev-002 absent, required all six retained test programs, and found every new
+log, status, lock, and evidence path absent. The host evidence attempts are
+retained beneath:
+
+```text
+C:\Users\dharm\vm\ocaml\evidence\
+  plan9-phase-2-process-primitives-github-focused-test-resume-001\
+    attempt-001 through attempt-004
+```
+
+Immediately before preparation, only the recorded `.40` chain was live:
+P9QEMU PID 35220, Python PIDs 36204 and 28120, and QEMU PID 10892. QEMU
+alone owned all seven `127.0.0.40` listeners and retained
+`whpx,kernel-irqchip=off`.
+
+The user ran the corrected launcher. The focused test is accepted: GNU Make
+returned zero, all five suites emitted their required markers, and the run
+took four seconds:
+
+```text
+/tmp/plan9-phase2-github-qualification-focused-test-002.log
+  SHA-1: 90fadd984484d9d4592ebfbfdcac8f598380dd18
+/tmp/plan9-phase2-github-qualification-focused-test-002.status
+  SHA-1: 09d2af8dd22201dd8d48e5dcfcaed281ff9422c7
+  text: 0
+/tmp/plan9-phase2-github-qualification-focused-test-002-a001/
+  test-artifact-sha1.txt
+    SHA-1: 4075fb4cdc14adde0b73a7fdd23cb720729caaf3
+
+FOCUSED_TEST_ELAPSED_SECONDS=4
+FOCUSED_TEST_COMMAND_STATUS=0
+QUALIFICATION_FOCUSED_TEST_RESUME_READY
+```
+
+The retained artifact manifest and an independent live comparison agree:
+
+```text
+6f703f32a1fc1695e4b7b71d9b55e375d40ebeed  tests/env_test
+ffecd1df788334ee4f33d97cde60d74ec81ed07c  tests/process_state_test
+c406474237cf384b092c3d374dbaecdfe014dddd  tests/process_primitive_validation_test
+aa29af3f776e58841578dcc54ffaaeda7e50eaa8  tests/process_frame_parser_test
+2464a9adc529bba05293bd8b89602da328b021d6  tests/process_native_integration_test
+053e7fb3333adcfe59d68e1e847bd1ddb3b22e7b  tests/process_native_helper
+```
+
+The focused-test lock is absent. The scalar, function, and process-specific
+dedicated `/env` names are absent. The first read-only cleanup command left
+the function-name path unquoted, so native `rc` treated its `#` as a comment
+and stopped after the scalar check; a corrected quoted check established both
+remaining absences. No test or guest state was changed by either inspection.
+Do not rewrite or delete the rejected `-001` log and status.
+
+The separately opt-in native interruption scripts are now prepared:
+
+```text
+/tmp/plan9-phase2-github-qualification-native-interruption-driver-001.sh
+  bytes: 5692
+  SHA-1: 4aa0db026749573723dba348c2c0ba6458d541bc
+  SHA-256:
+    8e8e4c24eff9ec4eca39d038394d1caebe9ed8e193af048c86dca040276391cb
+/tmp/plan9-phase2-github-qualification-native-interruption-001.rc
+  bytes: 173
+  SHA-1: 3fd60682c2dd119bfd44f585633e29db9e4323d0
+  SHA-256:
+    2fe7cce898de9e8aa42e3b178ac9a1c776835dd635a830adf5ec33b52a430a04
+```
+
+Their non-running check passed. It pins the accepted focused-test log, status,
+artifact manifest, runtime, integration program, and native helper; requires
+dev-002 and all new result paths absent; invokes only
+`test-native-interruption`; validates the exact pass marker through
+`/bin/fgrep`; records timing and artifact identities; and permits the bounded
+helper to send `interrupt` only to its own parent. Preparation evidence is:
+
+```text
+C:\Users\dharm\vm\ocaml\evidence\
+  plan9-phase-2-process-primitives-github-native-interruption-preparation-001\
+    attempt-001
+```
+
+The user ran the interruption launcher. The result is accepted: it returned
+zero in one second, emitted the exact interruption pass marker, terminally
+resolved the retained handle on retry, and left its lock absent:
+
+```text
+/tmp/plan9-phase2-github-qualification-native-interruption-001.log
+  SHA-1: fe8d8b553b2d81180489746a784be7da093fbb62
+/tmp/plan9-phase2-github-qualification-native-interruption-001.status
+  SHA-1: 09d2af8dd22201dd8d48e5dcfcaed281ff9422c7
+  text: 0
+/tmp/plan9-phase2-github-qualification-native-interruption-001-a001/
+  interruption-artifact-sha1.txt
+    SHA-1: 3003ce4bb38c20a6ee6cf6bf8ae701393682cbff
+
+NATIVE_INTERRUPTION_ELAPSED_SECONDS=1
+marker: process_native_integration_test: interruption passed
+QUALIFICATION_NATIVE_INTERRUPTION_READY
+```
+
+The evidence manifest and independent live comparison agree on the unchanged
+runtime, integration program, and bounded helper:
+
+```text
+bfd90e02106473094c2f54dc189217f5daaf32e4  runtime/ocamlrun
+2464a9adc529bba05293bd8b89602da328b021d6
+  otherlibs/plan9/tests/process_native_integration_test
+053e7fb3333adcfe59d68e1e847bd1ddb3b22e7b
+  otherlibs/plan9/tests/process_native_helper
+```
+
+The broader upstream suite first requires its `ocamltest` driver. The
+configuration has deliberately excluded it from the documented world build
+since the original Plan 9 configure wrapper. Upstream's bytecode `ocamltest`
+target uses `ocamlc -custom`; the original Plan 9 port retained that mode and
+added the build-tree-specific `-ccopt ../runtime/main.b.$(O)` workaround.
+Therefore this exact `ocamltest` target may succeed even though general
+installed/downstream custom-runtime linking remains a separately deferred
+capability. Either result is testsuite infrastructure evidence rather than a
+Phase 2 process regression.
+
+The build-only scripts are prepared:
+
+```text
+/tmp/plan9-phase2-github-qualification-ocamltest-build-driver-001.sh
+  bytes: 5932
+  SHA-1: 7ccafe3602d21928650516e48bbbd492babc4da7
+  SHA-256:
+    f13b75f6fa3e0bebb88d2680fc2eb1de19477aed6c498bc30272cdfee7360bdc
+/tmp/plan9-phase2-github-qualification-ocamltest-build-001.rc
+  bytes: 169
+  SHA-1: b8d46fb99297bcd00b9f8a9242e2a5fb81d84064
+  SHA-256:
+    9ce64da5f05b5a8571ecf755909d3a558ec9d6a7dc3c16cadbbc4857a9c4fca1
+```
+
+The non-build check passed. It pins the accepted interruption evidence and
+world artifacts, requires the disabled-ocamltest configuration, absent
+`ocamltest/ocamltest`, absent dev-002, and collision-free result paths. The
+driver runs only root target `ocamltest`, records its upstream custom-link
+mode and timing, smoke-runs `ocamltest -help` only after a successful build,
+and stops before every testsuite target. Preparation evidence is:
+
+```text
+C:\Users\dharm\vm\ocaml\evidence\
+  plan9-phase-2-process-primitives-github-ocamltest-build-preparation-001\
+    attempt-001
+```
+
+At that point, the exact next user action was:
+
+```rc
+/tmp/plan9-phase2-github-qualification-ocamltest-build-001.rc
+```
+
+After that build-only prerequisite passes, prepare and review distinct
+user-launched drivers for:
+
+1. an upstream testsuite inventory and bounded bytecode-compatible run;
+2. isolated install, runtime/primitive/archive/layout checks, ordinary
+   installed-consumer and C-tool-sentinel proof, and production-prefix
+   comparison; and
+3. attempt-specific cleanup followed by the separately coordinated shutdown
+   and halted host postflight.
+
+The broader upstream testsuite is worthwhile regression evidence, but the
+current Plan 9 configuration explicitly uses `--disable-ocamltest`, and root
+`make tests` delegates to `testsuite all`, which refuses to run without a
+built `../ocamltest/ocamltest`. A separate preparation step should first test
+whether the already-built bytecode world can build the explicit root
+`ocamltest` target without changing configuration, then inventory and classify
+the bytecode-compatible test directories. Native-compiler, shared-library,
+systhreads, debug-runtime, and unsupported Unix assumptions must be recorded
+as unsupported or expected skips rather than confused with Phase 2
+regressions. Run a bounded bytecode-compatible lane before considering a full
+exploratory `testsuite all`, with separate infrastructure, skip, expected
+failure, and regression accounting.
+
+The focused-test step did not toggle `/net/cs`, contact GitHub, reclone, run
+the opt-in interruption test, install, halt the guest, or create or mutate any
+compiler prefix.
+
+### Accepted broader upstream suite
+
+The explicit `ocamltest` prerequisite built successfully from the already
+built exact-source tree. This was a testsuite-infrastructure qualification of
+the original Plan 9 build-tree custom-link workaround; it did not claim that
+the separately deferred general downstream custom-runtime defect was fixed.
+
+The broader upstream suite then completed successfully in 3,857 seconds
+(`01:04:17`):
+
+```text
+passed: 1766
+skipped: 522
+not applicable or not started: 860
+failures: 0
+unexpected results: 0
+timeouts: 0
+missing-helper errors: 0
+```
+
+Retained evidence identities include:
+
+```text
+suite wrapper log SHA-1:
+  5b331bdad48c22f463243165ee4cccba1b1da0dc
+testsuite test log SHA-1:
+  5625a883a86ac770defe2c015b0dab7c2f98df01
+testsuite report SHA-1:
+  dedf71166f3ff803c0bf9a5cd0783f26813c3f14
+suite artifact-list SHA-1:
+  2673b120eac16ef89fc52d5c26c183a61a012529
+```
+
+Native-compiler, shared-library, systhreads, debug-runtime, and unsupported
+Unix cases remained classified by the configured bytecode-only Plan 9 lane;
+they were not reported as Phase 2 regressions.
+
+### Accepted isolated installation and installed consumer
+
+The exact source installed only into:
+
+```text
+/usr/glenda/lib/unix/ocaml-4.14.3-plan9-dev-002
+```
+
+Installation returned zero in 14 seconds and produced 338 files. The
+production prefix retained the same 336 paths and digests. Key installed
+artifacts are:
+
+```text
+bfd90e02106473094c2f54dc189217f5daaf32e4  bin/ocamlrun
+2d65adb530a1dff611715be5b4196aa96821d11f  bin/ocamlc
+72f4d2e83cbadfe29ae304c8eea931f7658d1854  bin/ocaml
+2fc7e820802398bc470c2b05eb5eb40174528b47  bin/ocamlobjinfo
+b052ca6b994d6d73c8dc36184b928fdfc4f0b6b9
+  lib/ocaml/plan9/plan9.cma
+1b35a2867b20104a3ae92310638c3a178cf05698
+  lib/ocaml/plan9/plan9.cmi
+```
+
+`ocamlobjinfo` reported `Force custom: no`, with no extra C objects, C
+options, or dynamically loaded libraries. The standard installed runtime
+advertised exactly the seven expected `caml_plan9_*` primitives. The private
+`Plan9_process` interface, test programs, and private frame header were not
+installed.
+
+The installed-consumer qualification privately hid `/usr/glenda/src`, then
+compiled and ran in four seconds with the normal command shape:
+
+```text
+ocamlc -I +plan9 plan9.cma program.ml -o program
+```
+
+It passed live `Plan9.Env` and native `Plan9.Process.run` checks. Fail-closed
+sentinels proved the consumer invoked no `c89`, `cc`, `gcc`, `clang`, `ld`,
+`ar`, `ocamlmklib`, or `flexlink`; the sentinel log remained absent. The
+temporary consumer output, work directory, and locks were absent at closeout.
+Post-consumer inventories reproduced both the production and dev-002
+installation byte-for-byte.
+
+Important retained installation evidence includes:
+
+```text
+install log SHA-1:
+  2c3804e4ba21f68f2c32d8e2671159c52fc57f35
+install evidence-manifest SHA-1:
+  34b5b61a864dd1d326689aa902da7b31d4d9df4e
+installed key-artifact list SHA-1:
+  cc9628095ad14e095f5acd93bb22adcf86d45a00
+dev-002 layout SHA-1:
+  afdf8b0b77053921291b0ee92ae11f0984bd65e0
+dev-002 digest inventory SHA-1:
+  e1a950b6e996f0b08513508ecf72cd67c048a509
+production layout SHA-1:
+  e871b8a897976a13aa8f4b8283acc61a48e349fe
+production digest inventory SHA-1:
+  06bacc059c59a928ae69df5bee1e084772b8b77e
+```
+
+### Accepted binary release candidate RC001
+
+The user directed that the fully built exact-source tree remain intact. Do not
+remove:
+
+```text
+/usr/glenda/src/ocaml-plan9-phase2-github-qualification-001
+```
+
+It is the retained incremental correction base. A later reviewed source-only
+change can update that tree, let GNU Make rebuild only affected outputs, run
+focused regression tests, reinstall into a separately understood candidate
+prefix, and generate a successor binary candidate without repeating an
+unnecessary clean world build.
+
+RC001 packages only the normal dev-002 installed prefix, not the Git checkout
+or build tree. Native `/bin/tar` created it from `/usr/glenda/lib/unix` in
+eight seconds. The 338-file prefix inventory was byte-identical before and
+after packaging. Windows independently parsed all 351 POSIX ustar entries and
+found the single expected top-level directory with no absolute or parent
+traversal path:
+
+```text
+Windows artifact root:
+  C:\Users\dharm\vm\ocaml\artifacts\plan9-phase2-rc001
+archive:
+  ocaml-4.14.3-plan9-phase2-rc001-amd64-d8ec53e.tar
+top-level directory:
+  ocaml-4.14.3-plan9-dev-002/
+required extraction parent:
+  /usr/glenda/lib/unix
+bytes:
+  49020928
+SHA-1:
+  80a6f2652385ba056295ad29c1b6b27efc25200d
+SHA-256:
+  6b3772442eb0788d209e4b6046c55932e7352e6b4ae560fe354eaa748868bfab
+manifest:
+  C:\Users\dharm\vm\ocaml\artifacts\
+    plan9-phase2-rc001\MANIFEST.txt
+```
+
+The Windows artifact root contains the archive, checksums, manifest,
+guest-generated archive listings, package log/status, and before/after prefix
+inventories. It also contains a byte-identical companion copy of
+`otherlibs/plan9/REFERENCE.md` as `PLAN9-LIBRARY-REFERENCE.md`, with SHA-256
+`9905eb36e4db0b6483a2304fe4bb2ca772304b8b8a20176b2b70ce854c976e07`.
+No partial transfer file remains. The `.40` VM was intentionally left running;
+packaging did not build, reinstall, edit source, halt, copy a VM, or access any
+caml9 operational resource.
+
 ## Exact next gate
 
-The recommended next separately authorized gate is
-`plan9-phase-2-process-primitives-native-build-test-resume-004`, carrying the
-complete Gate 2.4 exact-source qualification contract.
+The next separately owned consumer action is caml9's independent RC001
+installation and evaluation on a caml9-selected compatible amd64 Plan 9
+development machine. The caml9 task receives the Windows artifact path only;
+it does not receive `.40`, P9QEMU, port, source-tree, prefix, or checkpoint
+ownership.
 
-That gate should first cold-review the complete Windows candidate at
-implementation commit `c8345f28a1be5d59b0ebcc93544e6a6aaa172984`.
-With no source correction, the clean index must reproduce tree
-`5e9f01be369aeecbe6d3c8f9a879f6652d685944`.
-It should export and independently reproduce a deterministic archive, use a
-fresh native source tree and evidence attempt, configure only for isolated
-prefix `/usr/glenda/lib/unix/ocaml-4.14.3-plan9-dev-002`, and repeat the
-complete world build, focused suites, opt-in interruption test, install,
-built-in primitive, ML-only archive, installed layout, ordinary consumer,
-C-tool sentinel, production-prefix identity, cleanup, shutdown, and halted-VM
-postflight requirements.
-
-The accepted incremental tree is diagnostic development evidence. It must not
-be installed into its inherited configured prefix or substituted for the
-fresh exact-tree qualification. The gate must stop at the first new failure
-and make no source correction.
-
-This incremental result is diagnostic development evidence, not final Gate
-2.4 acceptance. A later exact-tree build in a fresh native tree and isolated
-dev-002 configuration remains required before final milestone publication.
+Operational ownership of `.40` remains solely with the OCaml task. If caml9
+reports a required source change, first reconcile the requested behavior with
+the accepted Plan 9 API and lifecycle contracts, then authorize a bounded
+Windows-source correction, explicit changed-file transfer into the retained
+exact-source tree, incremental Make rebuild, focused native regression tests,
+isolated installation, and a newly identified binary candidate. Do not
+silently mutate RC001.
 
 Caml9, `.32`, protected checkpoints, production and Phase 1 prefix mutation,
-custom-runtime repair, RFNOMNT, service behavior, CPU-017, and any further
-source or milestone publication remain excluded unless separately authorized.
-Dev-002 creation, installation, consumer checks, and the exact-source
-interruption rerun require the exact next authorization above.
+custom-runtime repair, RFNOMNT, service behavior, CPU-017, and milestone
+publication remain excluded.
 
 ## Recovery boundary
 
-The `.40` mutable lab is currently halted. Its exact selected-disk boundary is
-1,641,086,976 bytes with SHA-256
+The `.40` mutable lab is currently running. Do not hash, copy, exclusively
+open, or run `qemu-img` against its active disk. The last verified halted disk
+identity before this launch was 1,641,086,976 bytes with SHA-256
 `559fb5c400d10727ac38fed2cf5aecafbb701e309d18b881101a5b77ff4c59eb`.
-The instance manifest, backing relationship, clean flags, integrity check,
-exclusive-open check, closed/bindable listeners, and pinned-WHPX dry run all
-passed.
 
-Before starting the formal Gate 2.4 run, revalidate the published
-qualification branch and require a clean index reproducing the exact reviewed
-implementation tree. Export that tree through a deterministic archive. Create
-a new collision-free evidence attempt and serial path, then revalidate the
-same halted disk, process, and listener boundary immediately before launch.
-Do not start `.40` merely to reuse the incremental tree as acceptance
-evidence.
+The retained exact GitHub checkout is configured and fully built, including
+the `ocamltest` prerequisite and broader-suite products. Its rejected
+procedural attempts, accepted focused and interruption evidence, complete
+upstream-suite evidence, install evidence, installed-consumer evidence, and
+RC001 packaging evidence remain distinct beneath `/tmp`. Dev-002 is installed
+and accepted. The package and Windows-copy locks are absent; the installed
+consumer left no work directory, sentinel log, or test output.
+
+The user's one-time `echo ipv6 >/net/cs` workaround remains a global property
+of this running guest and will not survive reboot. Do not toggle it again
+blindly and do not turn it into a boot policy without separate analysis.
+
+By explicit user direction, retain both the exact-source build tree and the
+dev-002 prefix. They provide the fast incremental correction lane and the
+accepted installed candidate. The Windows RC001 archive provides an immutable
+handoff and rollback identity for caml9 evaluation.
+
+Later shutdown must use address-specific `.40` `fshalt`, wait for the recorded
+process chain, close and rebind all seven listeners, and complete the halted
+QCOW2 and pinned-WHPX postflight. Until that shutdown, do not hash, copy,
+exclusively open, or inspect the active writable disk.
 
 No OCaml-project checkpoint has been created. The accepted Phase 1 tree and
-prefix, the prepared Phase 2 tree, and the mutable disk are development state,
-not protected recovery points.
+prefix, the Phase 2 incremental tree, the retained exact-source tree, dev-002,
+and the mutable disk are development state, not protected recovery points.

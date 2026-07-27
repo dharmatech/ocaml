@@ -11,6 +11,10 @@ That normal link does not require `-custom`, `-use-runtime`, C stubs, a C
 compiler, or a linker. On the Plan 9 target, the standard `ocamlrun` provides
 the native process primitives used by the ML-only archive.
 
+For user-facing examples and the complete public API, see the
+[`Plan9` library reference](REFERENCE.md). This README records implementation
+semantics, validation details, and qualification evidence for maintainers.
+
 ## `Plan9.Env`
 
 `Plan9.Env` reads and mutates the calling process's live `/env` namespace.

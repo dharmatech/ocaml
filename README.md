@@ -79,5 +79,7 @@ ocamlc -I +plan9 plan9.cma program.ml -o program
 ```
 
 This does not require `-custom`, `-use-runtime`, C stubs, a C compiler, or a
-linker. See `otherlibs/plan9/README.md` for the environment representation,
-process ownership model, validation, errors, and qualification boundary.
+linker. See the [Plan 9 library reference](otherlibs/plan9/REFERENCE.md) for
+user-facing examples and the complete public API. The
+[library README](otherlibs/plan9/README.md) records implementation semantics,
+validation, and the qualification boundary.
