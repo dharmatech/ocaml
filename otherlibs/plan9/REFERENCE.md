@@ -490,5 +490,3 @@ before native exec.
 - [`plan9.mli`](plan9.mli) is the canonical public interface.
 - [`README.md`](README.md) records implementation semantics and focused-test
   coverage.
-- [`../../docs/design/plan9/`](../../docs/design/plan9/) contains design and
-  verification rationale for port maintainers.

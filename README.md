@@ -11,11 +11,17 @@ The Plan 9-specific OCaml build helpers live in `build-aux/plan9`.
 
 This OCaml port depends on the Plan 9 port of GNU Make.
 
+HTTPS cloning uses `webfs`. If it is not already running, start it with:
+
+```sh
+webfs
+```
+
 From a Plan 9 shell:
 
 ```sh
 cd /usr/glenda/src
-git/clone git@github.com:dharmatech/make.git
+git/clone https://github.com/dharmatech/make.git
 cd make
 git/branch plan9-4.4.1-000
 ```
@@ -36,7 +42,7 @@ From a Plan 9 shell:
 
 ```sh
 cd /usr/glenda/src
-git/clone git@github.com:dharmatech/ocaml.git
+git/clone https://github.com/dharmatech/ocaml.git
 cd ocaml
 git/branch plan9-4.14.3-000
 ```
