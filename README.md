@@ -23,7 +23,6 @@ From a Plan 9 shell:
 cd /usr/glenda/src
 git/clone https://github.com/dharmatech/make.git
 cd make
-git/branch plan9-4.4.1-000
 ```
 
 Then enter APE and install GNU Make:
@@ -44,7 +43,6 @@ From a Plan 9 shell:
 cd /usr/glenda/src
 git/clone https://github.com/dharmatech/ocaml.git
 cd ocaml
-git/branch plan9-4.14.3-000
 ```
 
 Then enter APE and install OCaml:
