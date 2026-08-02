@@ -1,0 +1,4 @@
+#!/bin/rc
+# plan9-local baseline: keep connection-server DNS lookups on IPv4.
+if(! test -e /srv/cs && ! test -e /net/cs)
+	ndb/cs -4
