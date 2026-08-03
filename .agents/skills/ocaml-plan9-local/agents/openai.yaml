@@ -1,4 +1,4 @@
 interface:
   display_name: "OCaml Plan 9 Local"
-  short_description: "Use local P9QEMU and Windows Drawterm"
-  default_prompt: "Use $ocaml-plan9-local to start or connect to the OCaml Plan 9 P9QEMU VM from Windows."
+  short_description: "Transfer, build, and test OCaml on Plan 9"
+  default_prompt: "Use $ocaml-plan9-local to transfer and validate OCaml source in an already prepared Plan 9 development guest."

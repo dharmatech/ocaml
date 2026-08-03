@@ -1,67 +1,46 @@
 ---
 name: ocaml-plan9-local
-description: Use when operating the OCaml Plan 9 P9QEMU VM from Dharmatech's Windows host, including starting or stopping an instance, selecting its loopback address, connecting through the P9QEMU Drawterm ports, or transferring OCaml files through /mnt/term.
+description: Use when transferring OCaml source to an already prepared Plan 9 guest, selecting native source/build/install paths, or running the OCaml Plan 9 configure, GNU Make, test, and installation workflow. Do not use for creating, cloning, starting, stopping, checkpointing, or removing VMs; use ocaml-plan9-vm-workflow instead.
 ---
 
-# OCaml Plan 9 local VM access
+# OCaml Plan 9 Local Development
 
-Use this skill only for the host-specific P9QEMU and Windows Drawterm details
-needed by the OCaml port.
+Keep the Windows checkout authoritative while doing compiler, runtime, library,
+and installed-prefix work on native Plan 9 storage.
 
-## Local paths
+## Boundaries
 
-- Installed P9QEMU: `C:\Users\dharm\.local\bin\p9qemu.exe`
-- P9QEMU documentation: `C:\Users\dharm\src\p9qemu\README.md`
-- Drawterm: `C:\Users\dharm\src\drawterm\build\msvc\drawterm.exe`
-- OCaml VM root: `C:\Users\dharm\vm\ocaml`
-- OCaml checkout through Drawterm:
+- Authoritative editing repository: `C:\Users\dharm\src\ocaml`.
+- Drawterm view of that checkout:
   `/mnt/term/C:/Users/dharm/src/ocaml`
+- Use `/mnt/term` only for exchange. Copy build inputs to native Plan 9
+  storage before configuring, building, or testing.
+- Never copy `.git` between Windows and Plan 9 and never build directly through
+  `/mnt/term`.
+- Retain useful native build trees for incremental development. Use a fresh
+  clone only for deliberate end-to-end qualification.
+- Agree on an isolated installation prefix with the user. Do not overwrite a
+  known-working compiler.
+- Keep the APE/GNU Make build lane unless the user chooses to change it.
 
-Consult the P9QEMU README for image creation and uncommon options.
+## Workflow
 
-## Start an instance
+1. Confirm the already prepared guest target and native destination paths.
+2. Use `$plan9-drawterm-windows` for transport and `/mnt/term` exchange.
+3. Transfer only the intended source inputs and verify them after copying to
+   native storage.
+4. Configure for the Plan 9 target with the agreed compiler, GNU Make command,
+   and isolated prefix.
+5. Build and test from native storage. Preserve logs and durations useful to
+   the current development loop.
+6. Install only when authorized, then validate the installed compiler and
+   ordinary `ocamlc -I +plan9 plan9.cma ...` consumer shape independently of
+   the source-tree executables.
+7. Keep successful native trees when incremental rebuilding is valuable.
 
-Choose the instance and canonical `127.0.0.0/8` address with the user. P9QEMU
-forwards these seven TCP ports on that address:
+Use `$plan9-file-search` for guest file discovery, `$plan9-source` for Plan 9
+implementation source, `$plan9-docs` for manuals and papers, and `$plan9-git`
+when deliberately using git9 in a fresh-clone qualification.
 
-`17010`, `17019`, `17020`, `17021`, `17022`, `17564`, and `17567`.
-
-Confirm that the instance is not already running and that all seven ports are
-free. Then dry-run the exact start:
-
-```powershell
-& 'C:\Users\dharm\.local\bin\p9qemu.exe' start `
-    --instance 'C:\Users\dharm\vm\ocaml\dev' `
-    --host-forward-address 127.0.0.40 `
-    --accel whpx `
-    --dry-run
-```
-
-Remove `--dry-run` to start. Explicit `--accel whpx` has no automatic TCG
-fallback; use `--accel tcg` only when the user chooses software emulation.
-
-## Connect with Windows Drawterm
-
-Use the P9QEMU CPU and auth ports on the selected address:
-
-```powershell
-$labAddress = '127.0.0.40'
-$command = 'pwd'
-$env:PASS = '<password supplied by the user>'
-& 'C:\Users\dharm\src\drawterm\build\msvc\drawterm.exe' `
-    -h "tcp!$labAddress!17019" `
-    -a "tcp!$labAddress!17567" `
-    -u glenda -G -c $command
-```
-
-Set `$command` to the desired short rc command. Omit `-G -c $command` for an
-interactive graphical session.
-
-Use `/mnt/term/C:/Users/dharm/src/ocaml` to copy Windows OCaml files into native
-Plan 9 storage before compiling.
-
-## Stop the VM
-
-Use the same Drawterm template with `$command = 'fshalt'`. Wait for the
-P9QEMU/QEMU process to exit and verify that all seven ports on the selected
-address are closed.
+Use `$ocaml-plan9-vm-workflow` when the task crosses into VM lifecycle,
+checkpoint, loopback-address, serial-log, or instance management.
