@@ -153,8 +153,13 @@ Relevant implementation sources are:
 
 - `sys/src/libc/9syscall/mkfile:64-71`, for the amd64 stub recipe;
 - `sys/src/libc/9syscall/sys.h:2-52`, for syscall numbers;
+- `sys/src/cmd/pcc.c:128-146`, where the Plan 9 `c89` driver recognizes C
+  source and object/archive inputs but not assembly source;
 - `sys/src/libc/9sys/read.c` and `write.c`, which implement native logical
   reads and writes with `pread`/`pwrite` at offset `-1`;
+- `sys/src/9/port/sysfile.c:113-136` and `209-240`, where `newfd2` reserves
+  both descriptor slots before publishing either one and `syspipe` initializes
+  the caller's results to `-1` and closes both channels on failure;
 - `sys/src/9/pc64/l.s:918-959` and `trap.c:413-434`, for the amd64 kernel
   entry convention;
 - `sys/src/ape/lib/ap/syscall/genall:1-16`, for APE's separate private
@@ -195,6 +200,60 @@ reference. A mismatch stops the gate; it is not silently treated as release
 The raw functions use repository-prefixed symbols such as
 `caml_plan9_sys_pipe` and `caml_plan9_sys_pread`. They must not define or call
 the native libc names or APE's underscore-prefixed names.
+
+**Decision.** A private built-in primitive name is not an access-control
+boundary: user code can declare its own `external` binding. No ML-facing
+primitive may therefore accept or return a raw descriptor integer. Pipe
+creation publishes opaque, validated descriptor capabilities, and descriptor
+operations accept only capabilities created by this runtime path. The exact
+private representation is a Phase 0 implementation decision, but it must
+reject forged values, capabilities in the wrong state, and descriptors not
+owned by this path before native work.
+
+Validation is ordered defensively. Before reading any representation-specific
+payload, the runtime tier checks the immediate/block distinction, the expected
+tag, sufficient or exact block size as appropriate, and the runtime-owned
+capability identity. Only after those outer checks succeed may it read the
+capability state or descriptor. A forged look-alike must never cause an
+out-of-bounds access or dereference of attacker-controlled representation
+metadata.
+
+This defensive guarantee covers correct-arity primitive calls receiving
+arbitrary well-formed OCaml values, including values passed under a false type
+through `Obj.magic`. Deliberately incorrect `external` arities and mutation,
+truncation, retagging, or duplication of a valid capability through unsafe
+`Obj` representation operations are outside the supported contract. Phase 0
+does not add a global ownership registry merely to defend against those
+operations. Its capability has no descriptor-closing GC finalizer; descriptor
+release remains explicit and deterministic. A future decision to support
+unsafe block duplication would require shared state or an equivalent registry
+and a separate review.
+
+This capability is guarded runtime-integration state only. It is not the
+public `Plan9.Fd` ownership cell, attachment protocol, or authorization to
+begin Phase 1.
+
+Closing a capability saves the validated descriptor and terminalizes the
+capability at a nonraising commit point immediately before the non-pending
+blocking-section entry that leads directly to the raw close call. A later read
+or write is rejected without native work, repeated close is idempotent without
+another syscall, and an unexpected raw close failure or failure while
+constructing its result cannot make the uncertain descriptor usable again.
+
+A read primitive does not mutate a caller-supplied OCaml byte block. OCaml
+`string` and `bytes` values have the same runtime tag and cannot be
+distinguished defensively at this boundary. Instead, the primitive allocates,
+fully zero-initializes, and roots its own fresh byte result and allocates,
+initializes to GC-safe placeholders, and roots its structural success blocks
+before the native read. It copies the successful prefix into that value only
+after leaving the blocking section and returns the successful byte count
+separately without a post-read success allocation. Only the first `count`
+bytes contain input; the deterministically zeroed tail contains no native-read
+data. The later `Plan9.Fd.read` layer copies the prefix into its typed caller
+destination. Write input is only read. After pending actions have been
+processed, the runtime tier revalidates the string-tagged source and range,
+copies the current slice into bounded native staging, and only then performs
+the final capability-state validation immediately before blocking.
 
 ### Initial amd64 ABI
 
@@ -249,36 +308,121 @@ unrelated 9front code.
 runtime tier calls raw `ERRSTR` immediately, with an initially empty
 128-byte, qualified-`ERRMAX` buffer, before leaving the blocking section or
 performing any cleanup syscall that could replace the error. The resulting
-NUL-terminated text is copied into the existing structured `Plan9.error`
-representation.
+NUL-terminated text is copied into the existing private native-failure shape,
+containing a native kind and message. ML code assigns the high-level operation
+and converts that private value into `Plan9.error`; the C veneer does not
+construct the public error record or duplicate its classification hierarchy.
 
 The veneer does not use native `rerrstr`, because it is a libc helper rather
 than a syscall. It does not translate through `errno`.
 
 Interruption is not retried implicitly. The Plan 9 `pipe(2)` documentation
 states that an interrupted pipe read or write may have transferred an unknown
-number of bytes. Retrying could duplicate or lose data. A positive short read
-or write is returned as such; higher layers decide whether to continue. A
-negative result and its captured `errstr` remain one indivisible failure.
+number of bytes. Retrying could duplicate or lose data. A negative result and
+its captured `errstr` remain one indivisible failure.
+
+Positive short reads and writes are not treated symmetrically. Native `read(2)`
+documents a short read as normal, so a reader may continue from the returned
+count. It says a short write should be regarded as an error. Before using or
+publishing a nonnegative result, the runtime tier verifies that it is no larger
+than the exact count passed to that native call. An oversized result is a
+structured protocol failure and must never become a buffer index or copy
+length. The runtime tier preserves every valid positive count, but an
+exact-write helper must stop and report an actual native short write rather
+than silently completing it with another call. Any wrapper-imposed staging
+chunks must be distinguished from the count requested in the individual
+native call.
+
+Phase 0 proves this policy with a pure-ML helper local to the private test
+suite. The test supplies a fake low-level writer that returns a synthesized
+positive count smaller than the count requested for that call, then verifies
+that the helper reports failure after that single invocation and never issues
+the remainder. This helper is not production runtime or library code, is not
+installed, and creates no public API. Production exact-write behavior remains
+deferred to the higher layer that owns it.
+
+After capability and range validation, a zero-length read or write returns a
+successful count of zero without issuing a native syscall. A closed, forged,
+or otherwise invalid capability is still rejected when the requested length
+is zero. This avoids injecting a zero-length Plan 9 pipe message, which is
+indistinguishable from EOF to a reader, and gives zero-length reads the normal
+non-consuming behavior.
 
 ### OCaml heap and blocking sections
 
 **Decision.** No raw syscall receives a pointer into a movable OCaml value
 while the runtime is in a blocking section. Reads use a bounded native staging
-buffer, then copy the successful byte count into a rooted OCaml `bytes` value
-after leaving the blocking section. Writes copy from the validated OCaml range
-into a native staging buffer before entering the blocking section.
+buffer, then copy the successful byte count into the primitive's fresh, rooted
+OCaml `bytes` result after leaving the blocking section. Writes copy from the
+validated OCaml range into a native staging buffer before entering the
+blocking section.
 
-For a resource-producing call such as `pipe`, rooted OCaml blocks sufficient
-to return the owning success value are allocated and initialized before the
-native call. Once the descriptors exist, no fallible OCaml allocation may
-occur before their ownership is published or both descriptors are closed.
+For a resource-producing call such as `pipe`, rooted opaque capabilities and
+OCaml blocks sufficient to return the owning success value are allocated and
+initialized to GC-safe contents before the native call. Once the descriptors
+exist, no fallible OCaml allocation may occur before their ownership is
+published in those capabilities or both descriptors are closed.
+The qualified `syspipe`/`newfd2` implementation publishes its descriptors as
+an all-or-nothing pair, so a failed raw pipe call leaves no descriptor for the
+runtime tier to recover.
+
+**Decision.** Descriptor read, write, and close use
+`caml_enter_blocking_section_no_pending`, not
+`caml_enter_blocking_section`. The ordinary entry may execute an OCaml signal
+handler after a capability was validated but before the syscall; that handler
+could close the capability and make the saved descriptor stale or reusable.
+
+Before a potentially blocking descriptor operation proceeds to native work,
+the runtime tier checks for and processes pending OCaml actions while every
+live argument and preallocated result remains rooted. This may allocate, run
+callbacks, mutate the capability or a caller-owned write buffer, or raise.
+After it returns, read and close revalidate the capability state. Write first
+revalidates its source shape and range and copies the current source slice into
+bounded native staging, then performs the final capability-state validation.
+On the successful native-work path, every fallible allocation occurs before
+this post-callback sequence, and no allocation, OCaml safe point, or
+pending-action processing occurs during it or between final capability
+validation and the non-pending entry. If a post-callback validation rejects a
+value, the runtime may construct or raise its validation error afterward
+because no native work or new resource follows. This ordering follows the
+existing `runtime/io.c` check-pending, re-read-state, non-pending-entry pattern.
+Phase 0 excludes systhreads, and source review must confirm that the selected
+standard runtime hook makes this entry nonraising.
+
+For close, the implementation saves the finally validated descriptor and
+terminalizes the capability at that same nonraising commit point, then enters
+through the non-pending path and invokes raw close. Native error capture occurs
+before leaving as described above; close remains terminal even if raw close or
+later error-result construction fails.
+
+The dedicated negative-path probe has no ML descriptor capability and
+therefore no capability-validation step. It follows the separate invariant
+that every operation performed while it owns a local descriptor uses the
+non-pending discipline and never crosses an ordinary pending-processing entry.
+It attempts the deliberately invalid raw read only after the raw close of that
+descriptor succeeds. If close unexpectedly fails, the probe captures that
+close error immediately, never retries close on the now-uncertain target,
+closes only other definitely owned local resources, and returns without
+attempting the read. Cleanup must preserve the original close error. After a
+successful close, the probe reads through the saved integer, captures the
+expected read error before cleanup, and returns only that structured failure
+to ML.
+
+Every value needed to publish a successful syscall outcome is allocated,
+rooted, and initialized to GC-safe contents before native work unless the
+outcome has an immediate, allocation-free representation. After a native read
+or write result passes bounds validation and will be published as success, or
+after a successful close, no fallible allocation may occur before that outcome
+is published. Failure-result allocation may occur after the native error has
+been captured or an anomalous result has been safely classified and all
+relevant ownership is safe.
 
 The exact per-call staging capacity is a **Phase 0 experiment**. It will be
 bounded, independent of the total stream size, and no larger than both the
-native signed `long` range and a practical runtime allocation. Higher layers
-must already tolerate short reads and writes, so the chunk size is not an API
-property.
+native signed `long` range and a reviewed safe automatic-storage bound for the
+Plan 9 runtime stack. The ML integration accounts for staging-imposed chunks
+separately from the count requested in each native call, so the capacity is not
+a public API property.
 
 ### Child-safe subset
 
@@ -299,10 +443,20 @@ The initial file layout is expected to be:
 - `runtime/plan9_syscall.h`: private native-only declarations and child-safe
   contracts;
 - `runtime/plan9_syscall.c`: validated OCaml runtime integration; and
-- focused private tests under `otherlibs/plan9/tests`.
+- focused private tests under `otherlibs/plan9/tests`, including a test-only
+  native harness for the raw tier and private ML tests for runtime integration.
+
+The raw harness may use the ordinary test program environment for diagnostics,
+but every operation on a descriptor created by the repository-prefixed raw
+pipe entry must use only repository-prefixed raw entries. It is uninstalled,
+does not enter a standard runtime archive or `plan9.cma`, and its own C-library
+dependencies are audited separately from the raw assembly object.
 
 The private header must remain outside `runtime/caml`: the runtime install rule
 copies `runtime/caml/*.h` into the installed OCaml include directory.
+Because the architecture file is checked-in source, `clean` and `distclean`
+must preserve `runtime/plan9_syscall_amd64.s` and remove only its derived build
+artifacts.
 
 **Phase 0 experiment.** The Plan 9 `c89` driver compiles C with the native
 architecture compiler but ignores `.s` inputs. The build proof must establish
@@ -314,7 +468,10 @@ Plan 9 build, fail clearly for unsupported Plan 9 CPUs, and leave non-Plan-9
 builds unchanged.
 
 The primitive inventory generator must include every new `CAMLprim` exactly
-once for Plan 9 and never for other targets.
+once for Plan 9 and never for other targets. Because the existing generator
+ends with `sort | uniq`, the generated inventory alone cannot prove that a
+primitive was discovered only once. Acceptance must inspect the generated
+table and verify a single linked definition for every new primitive.
 
 ## `Plan9.Fd` target contract
 
@@ -360,11 +517,13 @@ APIs in the initial design.
 
 Plan 9 pipes are bidirectional peer endpoints. `pipe` must not falsely encode
 Unix-only read-end/write-end capabilities, although a caller such as process
-capture may assign those roles and close unused directions.
+capture may assign those roles and close unused endpoint copies.
 
 Argument range errors and use-after-close return a structured
 `Invalid_argument` error without a syscall. Native failures preserve the
-operation and exact captured error text.
+operation and exact captured error text. For an open handle and a valid range,
+`read` and `write` with `len:0` return `Ok 0` without a syscall; this shortcut
+does not turn an invalid or closed handle into success.
 
 The exact interface is reviewed again before the `Fd` implementation starts.
 
@@ -380,7 +539,7 @@ The provisional initial interface is:
 module In_channel : sig
   type t
 
-  val of_fd : Fd.t -> t
+  val of_fd : Fd.t -> (t, error) result
   val close : t -> (unit, error) result
   val input : t -> bytes -> pos:int -> len:int -> (int, error) result
   val input_line : t -> (string option, error) result
@@ -389,19 +548,30 @@ module In_channel : sig
 end
 ```
 
-`of_fd` transfers operational ownership to the channel. Once it returns,
+`of_fd` transfers operational ownership to the channel. Once it returns `Ok`,
 retained aliases of the originating `Fd.t` are attached and reject further
 descriptor operations; closing the channel closes and terminalizes the shared
-cell. If channel allocation fails before the transfer completes, the original
-descriptor remains open. The channel adds ML-owned buffering and never
-registers the descriptor with APE.
+cell. A closed or already attached handle returns a structured
+`Invalid_argument` error without native work. The channel value and enclosing
+`Ok` block are allocated before the single no-allocation state transition to
+`Attached`. The implementation rechecks that the cell is still open and
+detached immediately before that transition; no fallible allocation occurs
+between the transition and return. If any earlier allocation fails or the
+operation returns `Error`, the original descriptor remains operational. The
+channel adds ML-owned buffering and never registers the descriptor with APE.
 
 Input is binary. A line ends only at byte `0x0a`; the terminator is omitted.
 Carriage return and embedded NUL are ordinary bytes. Empty input yields no
 lines, a single newline yields one empty line, a trailing newline does not add
-an extra line, and an unterminated final line is returned. `input_all` and
-`input_lines` are explicitly bounded by OCaml's representable string/list
-memory and are intended for bounded streams.
+an extra line, and an unterminated final line is returned.
+
+**Deferred decision.** Before Phase 2, choose an explicit resource-bound policy
+for `input_line`, `input_all`, and `input_lines`. A single unterminated line can
+otherwise grow without bound, and an OCaml representability limit alone is not
+a resource-bound policy. The provisional signatures above may gain optional
+per-line or whole-input bounds or another explicit policy, but ordinary bounded
+use should remain concise. Tests must cover limit behavior and deterministic
+cleanup.
 
 Seeking, positions, length, text-mode translation, standard-input adoption,
 and file opening are deferred to the file/stat layers. The exact interface is
@@ -430,6 +600,14 @@ other endpoint as `Fd.t`, wraps it in `Plan9.In_channel`, drains it to EOF while
 the child runs, and only then completes the ordinary managed wait. Waiting
 before draining is forbidden because output larger than the pipe buffer would
 deadlock.
+
+After `rfork`, each side promptly closes the capture endpoint it does not own.
+The child closes the parent-designated endpoint, duplicates its endpoint onto
+descriptor 1, and closes the original child endpoint unless it is already
+descriptor 1. The parent closes the child-designated endpoint. Failure paths
+close every endpoint still owned by that path. These rules are required for
+the reader to observe EOF and must preserve the existing descriptor-hole
+behavior.
 
 The byte-oriented process API remains the adopted handoff shape, subject to a
 fresh review when its layer begins:
@@ -493,6 +671,12 @@ Command-layer review. They cannot be finalized safely before the capture
 ownership type is accepted. The convenience function must never erase an
 unresolved handle merely to obtain a smaller exception type.
 
+The Phase 4 review also chooses an explicit capture byte-bound policy, its
+default or optional argument shape, the structured limit-exceeded failure, and
+the endpoint/child cleanup behavior when the limit is reached. The successful
+convenience call must remain usable without additional ceremony, but capture
+must not ship with representable memory as its only bound.
+
 ## Implementation sequence and review gates
 
 Each layer follows design review, implementation, focused tests, native
@@ -506,24 +690,106 @@ wiring. Add no public `Plan9` API.
 
 Acceptance requires:
 
+- final native qualification starts from a fresh, artifact-free source copy of
+  the exact reviewed Windows tree, transferred without `.git` and placed on
+  native Plan 9 storage; it is configured and built without reusing objects,
+  archives, generated primitive tables, or binaries from an earlier build;
+- a private test-only native harness exercises raw pipe, logical read, logical
+  write, close, and immediate error capture without passing its raw pipe
+  descriptors through APE, while raw-object auditing remains isolated from
+  harness dependencies;
 - the standard amd64 Plan 9 `ocamlrun` builds in the existing APE/GNU Make
   lane and contains each private primitive exactly once;
 - a private ML test performs a binary pipe round trip, observes EOF after the
-  writer closes, handles short I/O correctly, and preserves embedded NUL;
-- a deliberate invalid-descriptor operation returns the immediate native
-  error string without `errno` translation;
+  writer closes, continues correctly after a deterministic positive short
+  read, and preserves embedded NUL;
+- source review proves that a positive native short-write count is preserved,
+  while the test-local pure-ML exact-write helper proves with a synthesized
+  positive short count that it reports failure after one invocation and never
+  issues the remainder;
+- source review proves that every nonnegative native read/write result is
+  checked against the exact count passed to that syscall before it is used as
+  a buffer index, copy length, or published count, and that an oversized result
+  becomes a structured protocol failure without an out-of-bounds access;
+- a short-read result has a fully initialized, deterministically zeroed tail,
+  and only the first returned-count bytes are treated as input; source review
+  confirms that every preallocated scanned result block has GC-safe contents
+  before any later allocation;
+- source review proves that the runtime checks and processes pending actions
+  before native work, then revalidates any state or write-source range a
+  callback could have changed and snapshots the current write slice before
+  final capability-state validation;
+- source review proves that successful final capability validation for read,
+  write, and close is followed immediately by
+  `caml_enter_blocking_section_no_pending`, with no allocation, safe point, or
+  pending-action processing in between;
+- source review proves that capability validation checks outer shape, tag,
+  size, and runtime-owned identity before reading representation-specific
+  payload;
+- source review proves that no fallible allocation follows a native read/write
+  count that passed bounds validation and will be published as success, or a
+  successful close, before publication of that outcome;
+- normal operations accept only runtime-created opaque descriptor
+  capabilities; forged or wrong-state values and reads or writes through a
+  closed capability fail before native work, while repeated close is
+  idempotent without another syscall;
+- zero-length read and write on an open capability return zero without native
+  work; a zero-length read consumes no queued byte, a zero-length write creates
+  no EOF-like pipe message, and a closed capability remains an error;
+- a dedicated internal negative-path probe closes a locally owned descriptor
+  and returns the following raw read's immediate native error string without
+  exposing that descriptor to ML or translating through `errno`; it performs
+  the invalid read only after close succeeds and otherwise preserves and
+  returns the unexpected close error without reading or retrying the uncertain
+  close, while cleaning up only other definitely owned resources;
 - repeated runs leave no descriptor behind;
 - object-level symbol inspection proves that the new veneer objects do not
   reference APE I/O/process wrappers or private direct-entry symbols;
 - source inspection proves the raw assembly objects have no undefined library
   calls;
+- an executed `clean` and `distclean` check on a disposable native tree proves
+  that both targets preserve the checked-in assembly source and remove its
+  derived object;
 - existing Plan 9 tests still pass; and
 - `plan9.cma` remains ML-only and ordinary installed use still needs no
   `-custom`, alternate runtime, compiler, linker, or wrapper compiler.
 
+When installation is authorized, prove the final packaging criterion with a
+focused private pipe smoke test compiled by the installed `ocamlc`, linked by
+an ordinary bytecode link with the installed `plan9.cma`, and run by the
+installed `ocamlrun`. The test must exercise at least private primitive pipe
+creation, write, read, EOF, and close. It must use no `-custom`, `-use-runtime`,
+C compiler, linker, wrapper compiler, or additional archive. Record the exact
+compiler, runtime, and library paths and confirm that execution used the
+installed runtime rather than a source-tree runtime. Run from a fresh native
+directory outside the source and build trees, with `OCAMLLIB`, legacy
+`CAMLLIB`, and `CAML_LD_LIBRARY_PATH` unset, and use no source- or build-tree
+`-I` path. Record the installed `ocamlc -where` result and verify that it lies
+inside the approved test prefix. Source-tree execution, source-tree artifact
+resolution, or installed-file inventory alone does not satisfy this criterion.
+
 No installed prefix is changed until the user approves an isolated test prefix.
 No VM is started until the user confirms the instance, loopback address, and
 action.
+
+#### Phase 0 execution subdivision
+
+Phase 0 is executed sequentially through these focused handoffs:
+
+1. `docs/design/handoffs/plan9-native-syscall-veneer-phase0-1-raw-build.md`
+   implements and validates only the raw ABI, native harness, and build/archive
+   proof;
+2. `docs/design/handoffs/plan9-native-syscall-veneer-phase0-2-capability-lifecycle.md`
+   adds and validates only opaque capabilities, pipe publication, deterministic
+   close, and native-error construction; and
+3. `docs/design/handoffs/plan9-native-syscall-veneer-phase0-3-byte-io-acceptance.md`
+   adds staged byte read/write and performs complete Phase 0 qualification.
+
+The shared roadmap is
+`docs/design/handoffs/plan9-native-syscall-veneer-phase0.md`. Each subphase owns
+its implementation and native validation, reports, and stops. The next begins
+only from a reviewed, user-approved checkpoint. Only Phase 0.3 may declare
+Phase 0 accepted or begin the architectural regroup before `Plan9.Fd`.
 
 ### Phase 1: `Plan9.Fd`
 
@@ -536,7 +802,8 @@ policy, and descriptor-leak tests.
 
 Review and implement buffering, exact bytes, `input`, `input_line`,
 `input_all`, `input_lines`, EOF cases, arbitrarily split delimiters, long
-lines, embedded NUL, unterminated final lines, and cleanup.
+lines, embedded NUL, unterminated final lines, cleanup, and the explicit
+per-line and whole-input resource-bound policies deferred above.
 
 ### Phase 3: process backend migration
 
@@ -551,7 +818,8 @@ Implement exact stdout capture through `Fd` and `In_channel`, then add
 `Command.run_capture_lines` and `run_capture_lines_exn`. Validate empty,
 multiline, embedded-NUL, unterminated, larger-than-pipe-buffer, literal shell
 metacharacter, nonempty-status, exec-failure, interrupted-read,
-interrupted-wait, descriptor-hole, repeated-call, and ownership-cleanup cases.
+interrupted-wait, descriptor-hole, repeated-call, ownership-cleanup,
+capture-limit, and limit-cleanup cases.
 
 Timing-sensitive note interruption remains a separate explicitly authorized
 qualification gate. No production fault switch or independent waiter is added.
@@ -572,7 +840,8 @@ This design does not authorize:
 - removal of the existing APE/GNU Make build lane;
 - a silent APE fallback for native modules;
 - native-code compiler, shared-library, systhreads, or custom-runtime work;
-- public raw descriptor integers, arbitrary `rfork` masks, or a raw waiter;
+- raw descriptor integers at any ML boundary, arbitrary `rfork` masks, or a
+  raw waiter;
 - shell execution, PATH search, pipelines, quoting, or expansion;
 - stdin or stderr capture, asynchronous streaming, or temporary-file capture;
 - unbounded output buffering;
@@ -592,8 +861,8 @@ Accordingly:
 
 - the feature branch is `codex/plan9-native-io-foundation`, not the handoff's
   suggested capture-only branch;
-- a safe abstract descriptor API is now intentional, while raw integers remain
-  private;
+- a safe abstract descriptor API is now intentional, while raw descriptors are
+  confined to the native C veneer and never cross an ML boundary;
 - capture is a later vertical slice over the accepted foundation; and
 - the earlier capture prototype is preserved on an archive branch but is not
   an implementation base.

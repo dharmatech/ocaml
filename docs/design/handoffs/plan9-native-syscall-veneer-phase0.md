@@ -1,21 +1,28 @@
-# Phase 0 native syscall veneer implementation handoff
+# Phase 0 native syscall veneer roadmap
 
-Status: ready for execution after a documentation-only checkpoint
+Status: umbrella roadmap; execute only through the focused subphase handoffs
 
 ## Authority and required reading
 
-This handoff delegates only Phase 0 of the native I/O foundation described in:
+The authoritative foundation is:
 
 `C:\Users\dharm\src\ocaml\docs\design\plan9-native-io-foundation.md`
 
-Read that document completely before editing code. Its architectural decisions,
-APE-independence definition, source provenance, and Phase 0 acceptance criteria
-are authoritative. Also read the repository `AGENTS.md` and every applicable
-local skill before acting.
+This roadmap divides its private Phase 0 proof into three sequential,
+independently reviewed and natively validated subphases. It is not itself a
+request to implement all of Phase 0 in one task.
 
-If this handoff appears to conflict with the foundation document, stop and ask
-the user. Do not resolve an architectural conflict by silently expanding the
-implementation.
+The focused execution handoffs are:
+
+1. `plan9-native-syscall-veneer-phase0-1-raw-build.md`;
+2. `plan9-native-syscall-veneer-phase0-2-capability-lifecycle.md`; and
+3. `plan9-native-syscall-veneer-phase0-3-byte-io-acceptance.md`.
+
+For a subphase, read this roadmap, that subphase's handoff, the foundation
+sections it names, the repository `AGENTS.md`, and every applicable local
+skill. Later-subphase handoffs are not implementation authority for an earlier
+subphase. The complete foundation remains authoritative if a cross-reference
+is unclear. If two documents genuinely conflict, stop and ask the user.
 
 ## Repository and branch identity
 
@@ -25,31 +32,30 @@ implementation.
   `a98e773a80311653d7a78763bd017328b5c26b52`.
 - Local source-and-workflow base:
   `835bc29b0c276a83211a517b950a55f0fb9c2bfe`.
-- Implementation branch: `codex/plan9-native-io-foundation`.
+- Sequential implementation branch: `codex/plan9-native-io-foundation`.
 - Preserved rejected prototype:
   `codex/archive/plan9-process-capture-prototype` at
   `1eb780b1b8467d1b80b35102e40371b87dde5604`.
 
-The implementation task should start after the foundation document and this
-handoff have been committed together as a documentation-only checkpoint. That
-checkpoint cannot record its own Git identity inside itself, so the executor
-must record the exact starting `HEAD` before editing. Its source-code parent is
-the local base identified above.
+The foundation, this roadmap, and all three subphase handoffs must first be
+committed together as a documentation-only checkpoint. Each executing task
+records its exact starting `HEAD`; the documents cannot record the identity of
+the commit that first contains themselves.
 
-Before implementation, verify:
+Before any subphase edits code, verify that:
 
-- the current branch is exactly `codex/plan9-native-io-foundation`;
-- `HEAD` contains both design documents;
+- the branch is exactly `codex/plan9-native-io-foundation`;
+- `HEAD` contains the complete reviewed documentation set and every accepted
+  predecessor subphase;
 - the index and worktree are clean; and
 - no unexpected commit, merge, rebase, or unrelated local change is present.
 
-If any condition differs, report the exact state and stop rather than cleaning,
-stashing, resetting, or absorbing someone else's work.
+If any condition differs, report the exact state and stop. Do not clean,
+stash, reset, or absorb another task's work.
 
-## Delegated outcome
+## Phase 0 outcome
 
-Implement and qualify the smallest private, OCaml-owned Plan 9 syscall veneer
-that proves these five logical operations:
+Phase 0 proves the smallest private, OCaml-owned Plan 9 syscall path for:
 
 1. native error capture;
 2. pipe creation;
@@ -57,305 +63,188 @@ that proves these five logical operations:
 4. logical write; and
 5. close.
 
-The proof must establish that a standard amd64 Plan 9 `ocamlrun`, although
-still linked with APE for the portable runtime, can perform these operations
-without using APE's I/O, descriptor, error, or private syscall-entry machinery.
+The final proof establishes that the standard amd64 Plan 9 `ocamlrun`, while
+still linked with APE for portable OCaml behavior, performs these operations
+without APE I/O or descriptor machinery, APE-private syscall entries, or
+native-error translation through `errno` or APE-private error helpers.
 
-Phase 0 changes no installed public `Plan9` API. Its result is private runtime
+Phase 0 adds no installed public `Plan9` API. It produces private runtime
 infrastructure, private tests, build integration, evidence, and documentation
-needed to decide whether work may proceed to `Plan9.Fd`.
+needed for the later `Plan9.Fd` design review.
 
-## Exact native boundary
+## Sequential execution plan
 
-Use the release-qualified mapping recorded in the foundation document:
+```text
+Phase 0.1: raw ABI and build proof
+                  |
+                  v
+Phase 0.2: capability lifecycle, pipe, close, and error proof
+                  |
+                  v
+Phase 0.3: staged byte I/O and complete Phase 0 acceptance
+```
 
-| Logical operation | Native syscall | Number | Required raw form |
-| --- | --- | ---: | --- |
-| capture error | `ERRSTR` | 41 | `int (char *, unsigned int)` |
-| close | `CLOSE` | 4 | `int (int)` |
-| pipe | `PIPE` | 21 | `int (int *)` |
-| read | `PREAD` | 50 | `long (int, void *, long, long long)`, offset `-1` |
-| write | `PWRITE` | 51 | `long (int, void *, long, long long)`, offset `-1` |
+### Phase 0.1: raw ABI and build proof
 
-The qualified native `ERRMAX` is 128 bytes. Define it under a
-repository-prefixed private name. Do not include APE's private `sys9.h` or use
-that header as the source of any veneer declaration, type, or constant.
+Implement the five checked-in amd64 raw syscall entries, private native
+declarations, architecture/build/archive wiring, and a private native harness
+that calls only those raw entries for the operations under test. Prove the
+assembler and archive facts, raw behavior, raw-object isolation, and cleanup
+rules on native Plan 9.
 
-Do not use legacy `_READ` or `_WRITE` syscall numbers merely because their
-names resemble the logical operations. Native 9front libc implements logical
-`read` and `write` using `pread` and `pwrite` with offset `-1`, and the veneer
-must preserve that choice.
+This subphase adds no `CAMLprim`, opaque ML capability, ML test, installed
+library content, or public API. Its checkpoint proves only the raw tier and its
+build integration.
 
-The initial ABI reference is the clean WSL checkout:
+### Phase 0.2: capability lifecycle
+
+Starting from an accepted Phase 0.1 checkpoint, implement the private opaque
+runtime capability, guarded pipe publication, deterministic close, native
+failure construction, and dedicated negative-path error probe. Add only the
+private primitives and ML tests needed for those operations.
+
+This subphase does not implement general byte read or write primitives. Its
+negative probe may use the already accepted raw read entry internally, but no
+raw descriptor crosses an ML boundary.
+
+### Phase 0.3: byte I/O and final acceptance
+
+Starting from an accepted Phase 0.2 checkpoint, add the private validated read
+and write primitives, bounded staging, pending-action ordering, allocation and
+rooting discipline, short/zero-length semantics, and the complete private ML
+test. Then perform the full regression, symbol, packaging, clean-build, and
+installed-prefix qualification required for final Phase 0 acceptance.
+
+Only Phase 0.3 may conclude that Phase 0 is accepted. It must stop for an
+architectural regroup before `Plan9.Fd`.
+
+## Shared invariants
+
+Every subphase preserves these rules:
+
+- the project keeps one standard APE-linked `ocamlrun` and the existing
+  APE/GNU Make build lane;
+- portable `Stdlib`, `Sys`, and `Unix` behavior remains unchanged;
+- repository-prefixed raw entries issue the selected native syscalls directly
+  and call no C, OCaml runtime, native libc, or APE function;
+- the raw tier accepts only native C values and caller-owned buffers;
+- runtime integration may use OCaml allocation, rooting, blocking-section, and
+  byte-copy facilities, but never APE operating-system I/O for the new path;
+- no ML-facing primitive accepts or returns a raw descriptor integer;
+- built-in primitive names are treated as callable by hostile correct-arity
+  `external` declarations, not as an access-control boundary;
+- descriptor release is explicit and deterministic, with no descriptor-closing
+  GC finalizer;
+- interruption is not retried implicitly;
+- native errors are captured immediately before cleanup can replace them and
+  are not derived from `errno`; and
+- no public name is added to `plan9.mli` or the installed reference.
+
+The initial and only qualified architecture is amd64 9front, using the clean
+read-only source reference:
 
 - `/home/dharmatech/src/9front-11554`;
 - commit `2191d72205863d2c53ea6ac36991cb4c13204c7c`; and
-- architecture amd64.
+- the release-qualified mappings recorded in the foundation.
 
-Inspect it read-only. Do not fetch, pull, switch, reset, or modify it. A future
-guest must independently report a matching release and architecture before its
-results count as Phase 0 acceptance.
+Other Plan 9 architectures receive neither copied amd64 entries nor a silent
+APE fallback.
 
-## Required implementation properties
+## Review, VM, and checkpoint protocol
 
-### Raw syscall tier
+Each subphase is a vertical slice owned by one executing task through source
+implementation, host-side review, and native validation. Do not split routine
+implementation and VM correction between concurrent tasks editing the same
+branch. A separate read-only review may be requested after a subphase reports.
 
-Provide checked-in, amd64 Plan 9 assembly entries under repository-prefixed
-symbols such as `caml_plan9_sys_pipe` and `caml_plan9_sys_pread`.
+For every subphase:
 
-The raw tier must:
+1. Record the starting Git and source state.
+2. Implement only that subphase.
+3. Run all safe host-side static checks and review the complete diff.
+4. Report the proposed code and any design deviation to the user, then pause.
+5. Before any VM operation, obtain explicit user confirmation of the exact
+   writable instance, loopback address, action, and acceleration profile.
+6. Transfer without `.git` through `/mnt/term`, copy onto native Plan 9
+   storage, and run the subphase's native qualification there.
+7. Report results and stop; do not begin the next subphase.
 
-- accept only native C values and caller-owned buffers;
-- return the kernel value without `errno` translation;
-- allocate nothing and construct no OCaml value;
-- call no C, OCaml runtime, native libc, or APE function;
-- neither define nor reference native libc syscall names or APE's
-  underscore-prefixed direct entries;
-- be suitable for a future constrained post-`rfork`, pre-`exec` child path;
-  and
-- record the source path, 9front commit, syscall name and number, and
-  MIT-licensed provenance in its comments.
-
-Do not generate the assembly from the guest's `/sys/src` during an ordinary
-build. The checked-in file is the reviewed build input.
-
-### Runtime integration tier
-
-Add only the internal `CAMLprim` operations needed for the Phase 0 proof.
-They must:
-
-- validate OCaml shapes, descriptor values, byte ranges, lengths, and unit
-  arguments before native work;
-- reject forged or unrepresentable values deterministically;
-- root every live OCaml value correctly;
-- use bounded native staging storage around blocking sections instead of
-  passing an OCaml heap pointer to a blocking syscall;
-- copy write input before entering the blocking section;
-- copy successful read bytes back only after leaving it;
-- tolerate and report positive short reads and writes;
-- avoid automatic retry after interruption;
-- call raw `ERRSTR` immediately after a negative result, before leaving the
-  blocking section or performing cleanup that could replace the error; and
-- never allocate in a blocking section or leave a newly created native
-  resource exposed to an allocating return path.
-
-For `pipe`, preallocate and root the OCaml blocks needed to publish the owning
-success value before entering the native call. After successful acquisition,
-either publish both descriptors without another fallible allocation or close
-both before such an allocation can occur. Error text may be converted to an
-OCaml value after a failed `pipe`, because no pipe descriptor then exists.
-
-Use the existing structured native failure conventions where they fit without
-making a public API. Do not duplicate a second public error hierarchy merely
-for the test.
-
-The staging capacity is an implementation experiment, not a public constant.
-Keep it bounded and document the reason for the chosen size.
-
-### Build and primitive integration
-
-The expected source boundary is:
-
-- `runtime/plan9_syscall_amd64.s`;
-- `runtime/plan9_syscall.h`;
-- `runtime/plan9_syscall.c`;
-- focused private tests under `otherlibs/plan9/tests`; and
-- the minimum runtime and test Makefile/primitive-inventory changes.
-
-Keep the private header outside `runtime/caml`, whose wildcard install rule
-would otherwise publish it with OCaml's installed runtime headers.
-
-These names may change only when the actual build requires it; report any
-change and its reason.
-
-Prove rather than assume:
-
-- the exact `6a` invocation;
-- the object suffix and requested output name accepted by the toolchain;
-- archive membership for every standard Plan 9 bytecode runtime variant;
-- dependencies and cleanup rules;
-- the configured fact used to select amd64 Plan 9; and
-- registration of each new primitive exactly once.
-
-The Plan 9 `c89` driver ignores `.s` input, and the bytecode-focused OCaml
-configuration may not expose amd64 through OCaml's native-code `ARCH` setting.
-Do not route the assembly through `c89` or key the rule to an unverified
-variable. Unsupported Plan 9 CPUs must fail clearly or omit the unexposed
-facility according to a reviewed build result; they must never fall back to
-APE silently. Non-Plan-9 builds must remain unchanged.
-
-`plan9.cma` must remain ML-only. Ordinary users must continue to require no
-`-custom`, `-use-runtime`, C compiler, linker, wrapper compiler, or additional
-archive.
-
-## Required focused tests
-
-The Phase 0 test interface is private and uninstalled. It may declare private
-`external` bindings directly, but no new name appears in `plan9.mli` or the
-installed reference as public API.
-
-At minimum, test:
-
-- forged primitive arguments fail before native work;
-- an empty payload and a binary payload containing embedded NUL round-trip
-  through a native pipe;
-- the I/O loops handle positive short counts rather than assuming one call
-  completes the request;
-- closing the writer produces EOF after all bytes are read;
-- closing both endpoints leaves no owned descriptor;
-- source review confirms that successful pipe acquisition reaches ownership
-  publication without a fallible OCaml allocation;
-- reading a deliberately closed endpoint returns a nonempty immediate native
-  error without `errno` translation;
-- close and error cleanup preserve the error from the operation that failed;
-- repeated round trips have clean descriptor postconditions; and
-- existing `otherlibs/plan9` tests retain their behavior.
-
-For the empty-payload case, close the designated writer without issuing a
-zero-length write. The matching `pipe(2)` manual warns that a zero-length pipe
-write is indistinguishable from EOF to the reader, so it is not a useful event
-to assert independently.
-
-The test must not use an ordinary OCaml channel, `Unix`, `Sys.command`, a
-temporary file, shell execution, APE descriptor registration, or another
-process.
-
-## Symbol and source audit
-
-Inspect the new raw object and runtime integration object separately.
-
-Acceptance requires evidence that:
-
-- the raw assembly object has no undefined library calls;
-- the new objects neither define nor reference `_PIPE`, `_PREAD`, `_READ`,
-  `_PWRITE`, `_WRITE`, `_CLOSE`, `_ERRSTR`, `_WAIT`, ordinary `pipe`, `read`,
-  `write`, or `close` as their operating-system path;
-- only the repository-prefixed raw entries issue the relevant syscalls;
-- source search finds no `_fdinfo`, `errno`, ordinary channel conversion, or
-  APE registration or private `sys9.h` inclusion in the new path; and
-- the whole-runtime presence of unrelated APE symbols is not misreported as a
-  failure of the isolated veneer audit.
-
-Record the exact inspection commands and relevant output. If the installed
-toolchain lacks the initially expected symbol utility, determine and document
-the narrow native equivalent rather than weakening the criterion.
-
-## Execution sequence and mandatory pauses
-
-### 1. Preflight and design confirmation
-
-Record branch, `HEAD`, remotes, worktree/index state, applicable repository
-instructions, and exact source references. Re-read the relevant current
-runtime build and primitive-generation code before proposing edits.
-
-### 2. Build experiment and implementation
-
-Implement the smallest build proof and five-operation veneer. Keep discoveries
-classified as confirmed fact, implementation decision, or unresolved issue.
-Do not begin `Plan9.Fd` as a way to make the test easier.
-
-### 3. Source review before VM work
-
-Run all safe host-side static checks, inspect the complete diff, and perform a
-fresh correctness review. Report the proposed code and any design deviation to
-the user. Do not start or access a VM yet.
-
-This is a mandatory user-review point. If review changes the architecture,
-update the foundation or handoff only with the user's agreement before
-continuing.
-
-### 4. Explicit VM and prefix confirmation
-
-Before any VM operation, ask the user to confirm:
-
-- the exact writable VM instance;
-- the explicit loopback address;
-- the intended start/access action and acceleration profile; and
-- the isolated experimental install prefix, if installation will be tested.
-
-Never boot a protected checkpoint, guess an endpoint, share a writable disk,
-or overwrite the known-working compiler prefix. Use the repository's VM and
-native-build skills exactly. Transfer source through `/mnt/term`, then build on
-native Plan 9 storage; never transfer `.git` and never build on `/mnt/term`.
-
-### 5. Native qualification
-
-On the confirmed guest:
-
-1. Record guest release, `cputype`, `objtype`, configured host identity, exact
-   compiler/assembler/archive tools, and GNU Make path.
-2. Verify that the guest matches the amd64 release assumptions or stop.
-3. Build the reviewed exact source on native storage through the existing
-   APE/GNU Make lane.
-4. Run the focused Phase 0 test and the existing Plan 9 regression suites.
-5. Perform the object-level symbol/source audit.
-6. Verify primitive inventory and `plan9.cma` ML-only packaging.
-7. If the user approved an isolated install prefix, install there and prove an
-   ordinary installed consumer still needs no consumer C tools.
-8. Record descriptor, process, temporary-file, source-tree, prefix, and VM
-   postconditions.
-
-If installation was not authorized, state that the installed-prefix acceptance
-criterion remains open. Do not present source-tree success as full Phase 0
-acceptance.
-
-### 6. Report and stop
-
-After validation, report the complete result and stop. Do not begin
-`Plan9.Fd`, migrate process code, implement capture, merge, tag, or publish a
-release.
+An install prefix is requested only in Phase 0.3. Never overwrite the
+known-working compiler prefix. No VM snapshot or checkpoint replacement is
+authorized by these handoffs.
 
 Do not commit or push implementation changes unless the user explicitly asks
-in the executing conversation. Never publish a known-broken or only partially
-validated runtime change.
+in the executing task. A later subphase must not begin from an unreviewed,
+known-broken, dirty, or only partially qualified predecessor.
+
+## Final Phase 0 acceptance summary
+
+The detailed criteria live in the foundation and Phase 0.3 handoff. At a
+minimum, final acceptance requires:
+
+- a fresh artifact-free native build of the exact reviewed tree;
+- correct checked-in raw entries and archive/build integration;
+- defensively validated opaque capabilities and deterministic ownership;
+- binary pipe round-trip, EOF, short-read, short-write-policy, zero-length,
+  forged-value, close, error-preservation, and descriptor-cleanup evidence;
+- correct pending-action, staging, rooting, preallocation, and publication
+  ordering established by test and source review;
+- isolated object/source evidence that the five-operation path avoids APE I/O,
+  descriptor machinery, private entries, and `errno` translation;
+- existing Plan 9 regression suites passing;
+- executed `clean` and `distclean` preservation checks; and
+- an approved installed-prefix smoke test proving ordinary bytecode linkage
+  with installed `ocamlc`, `ocamlrun`, and ML-only `plan9.cma`.
+
+If installation is not authorized, the installed-prefix criterion remains
+open and Phase 0 must not be reported as fully accepted.
 
 ## Strictly excluded work
 
-Phase 0 does not include:
+No Phase 0 subphase includes:
 
 - any public addition to `Plan9` or `plan9.mli`;
 - `Plan9.Fd`, `Plan9.In_channel`, `Plan9.Out_channel`, `Plan9.File`,
   `Plan9.Stat`, `Plan9.Directory`, or `Plan9.Command`;
 - modification or migration of `Plan9.Env`, `Plan9.Raw`, or `Plan9.Process`;
-- `run_capture`, line splitting, command execution, process creation, `dup`,
-  `rfork`, `exec`, `exits`, or `await`;
-- standard input/output adoption or raw descriptor integers;
+- process creation, capture, line splitting, `dup`, `rfork`, `exec`, `exits`,
+  or `await`;
+- standard-descriptor adoption or raw descriptors at any ML boundary;
 - changes to portable `Stdlib`, `Sys`, or `Unix`;
 - a second runtime, removal of APE, custom-runtime repair, native-code support,
   shared libraries, or systhreads;
-- temporary-file I/O, shell commands, or external service behavior; and
+- temporary-file I/O, shell commands, or external service behavior; or
 - VM snapshots, checkpoint replacement, release publication, or Caml9 changes.
 
-If one of these appears necessary, stop and return the evidence. Do not expand
-the phase on your own.
+If excluded work appears necessary, stop and return the evidence rather than
+expanding the subphase.
 
-## Completion report
+## Shared completion report
 
-The executing conversation must report:
+Every subphase reports:
 
-- adopted handoff and foundation-document paths;
-- exact starting base, documentation checkpoint, branch, tested tree, and
-  final commit identities, distinguishing committed and uncommitted states;
+- adopted foundation, roadmap, and focused-handoff paths;
+- exact starting branch, `HEAD`, predecessor checkpoint, tested tree, and final
+  committed or uncommitted identities;
 - selected 9front source and guest release/architecture provenance;
 - files changed and why;
-- raw symbols, syscall mapping, staging capacity, primitive shapes, and build
-  integration actually used;
-- every host and native validation command with pass/fail result;
-- symbol-audit evidence and APE-independence conclusion;
-- `plan9.cma` and ordinary-link packaging evidence;
-- descriptor and guest cleanup results;
-- every deviation, open criterion, uncertainty, or skipped gate;
-- the approved install prefix and proof that the known-working prefix was not
-  changed, if installation occurred; and
-- final worktree, index, branch, remote-tracking, VM, listener, and writable
-  disk status.
+- implemented raw symbols, primitive shapes, staging choices, or build wiring
+  relevant to that subphase;
+- every host and native command with pass/fail result;
+- symbol/source audit and APE-independence evidence relevant to that subphase;
+- descriptor, temporary-file, source-tree, VM, listener, and writable-disk
+  postconditions;
+- every deviation, uncertainty, open criterion, or skipped gate; and
+- final worktree, index, branch, and remote-tracking status.
 
-End the task with an explicit recommendation of either:
+Phase 0.3 additionally reports installed-prefix and `plan9.cma` packaging
+evidence and ends with exactly one recommendation:
 
 - **Phase 0 accepted; ready for architectural regroup before `Plan9.Fd`**;
 - **implementation ready but native qualification still required**; or
 - **Phase 0 blocked or rejected**, with the exact reason.
 
-Do not claim that the entire runtime is APE-free. The only acceptance claim is
-that the reviewed five-operation path is independent of APE's operating-system
-I/O and descriptor machinery inside the existing APE-linked runtime.
+No report may claim that the entire runtime is APE-free. The final claim is
+only that the reviewed five-operation path is independent of APE's
+operating-system I/O and descriptor machinery inside the existing APE-linked
+runtime.
