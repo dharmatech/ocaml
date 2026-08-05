@@ -47,6 +47,7 @@ endif
 # for amd64 Plan 9.
 PLAN9_SYSCALL_OBJECTS :=
 ifneq "$(filter x86_64-%-plan9,$(HOST))" ""
+BYTECODE_C_SOURCES += plan9_syscall.c
 PLAN9_SYSCALL_OBJECTS := plan9_syscall_amd64.$(O)
 endif
 
@@ -128,6 +129,11 @@ PLAN9_PROCESS_OBJECTS := $(filter plan9_process.%.$(O), \
   $(libasmrun_OBJECTS) $(libasmrund_OBJECTS) \
   $(libasmruni_OBJECTS) $(libasmrunpic_OBJECTS))
 $(PLAN9_PROCESS_OBJECTS): plan9_process_frame.h
+
+PLAN9_SYSCALL_INTEGRATION_OBJECTS := $(filter plan9_syscall.%.$(O), \
+  $(libcamlrun_OBJECTS) $(libcamlrund_OBJECTS) \
+  $(libcamlruni_OBJECTS) $(libcamlrunpic_OBJECTS))
+$(PLAN9_SYSCALL_INTEGRATION_OBJECTS): plan9_syscall.h
 
 # General (non target-specific) assembler and compiler flags
 

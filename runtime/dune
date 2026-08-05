@@ -23,7 +23,7 @@
      callback.c weak.c
    finalise.c stacks.c dynlink.c backtrace_byt.c backtrace.c
      afl.c
-   bigarray.c eventlog.c plan9_process.c ../Makefile.config)
+   bigarray.c eventlog.c plan9_process.c plan9_syscall.c ../Makefile.config)
  (action  (with-stdout-to %{targets} (run %{dep:gen_primitives.sh}))))
 
 (rule
@@ -46,6 +46,7 @@
    lexing.c callback.c debugger.c weak.c compact.c finalise.c custom.c dynlink.c
    afl.c unix.c win32.c bigarray.c main.c memprof.c domain.c
    skiplist.c codefrag.c plan9_process.c plan9_process_frame.h
+   plan9_syscall.c plan9_syscall.h plan9_syscall_amd64.s
  )
  (action
    (progn

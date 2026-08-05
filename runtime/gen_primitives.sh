@@ -25,6 +25,7 @@ plan9_sources=
 if test -f ../Makefile.config; then
   host=`sed -n -e 's/^HOST=//p' ../Makefile.config`
   case "$host" in
+    x86_64-*-plan9) plan9_sources="plan9_process plan9_syscall" ;;
     *-plan9) plan9_sources=plan9_process ;;
   esac
 fi
