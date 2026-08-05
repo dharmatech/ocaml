@@ -1,6 +1,7 @@
 # OCaml Plan 9 native I/O foundation
 
-Status: design draft for review; implementation has not started
+Status: accepted design; Phase 0.1 implemented and natively qualified;
+Phase 0.2 is the next delegated subphase
 
 Source handoff:
 `C:\Users\dharm\src\caml9\docs\design\handoffs\ocaml-plan9-process-run-capture.md`
@@ -20,6 +21,11 @@ Plan 9-native I/O foundation before implementing capture.
   published baseline is the reviewed local Plan 9 workflow skills.
 - Design and implementation branch: `codex/plan9-native-io-foundation`,
   created at `835bc29b0c276a83211a517b950a55f0fb9c2bfe`.
+- Reviewed Phase 0 documentation checkpoint:
+  `4209e21088f8ba0f5c5985fcec79e41d4cffcb77`.
+- Accepted Phase 0.1 raw ABI and build checkpoint:
+  `0d3ac056a37e597e9673607de591cb8a0b5247bb`. It is implemented, reviewed,
+  natively qualified, committed, and pushed on the feature branch.
 - Preserved prototype branch:
   `codex/archive/plan9-process-capture-prototype` at
   `1eb780b1b8467d1b80b35102e40371b87dde5604`. It is intentionally
@@ -29,6 +35,12 @@ Plan 9-native I/O foundation before implementing capture.
 The feature branch must not be merged and no replacement OCaml release may be
 published until its implemented layers have been reviewed and independently
 qualified on native Plan 9. Commits and pushes require explicit user approval.
+
+Phase 0.2 and Phase 0.3 implementation have not begun. The accepted Phase 0.1
+boundary remains private: five raw amd64 syscall entries, their private
+declarations and bytecode-runtime build integration, and a private native
+harness. It adds no `CAMLprim`, opaque ML capability, public API, installed
+interface, or `plan9.cma` C payload.
 
 ## How to read this document
 
@@ -205,10 +217,16 @@ the native libc names or APE's underscore-prefixed names.
 boundary: user code can declare its own `external` binding. No ML-facing
 primitive may therefore accept or return a raw descriptor integer. Pipe
 creation publishes opaque, validated descriptor capabilities, and descriptor
-operations accept only capabilities created by this runtime path. The exact
-private representation is a Phase 0 implementation decision, but it must
-reject forged values, capabilities in the wrong state, and descriptors not
-owned by this path before native work.
+operations accept only capabilities created by this runtime path. The focused
+Phase 0.2 handoff fixes the implementation decision as an exact-size private
+custom block with runtime-owned operations identity and explicit unpublished,
+open, and closed states. Its qualified amd64 payload is exactly two C `int`
+members: the only consistent state/descriptor pairs are `unpublished`/`-1`,
+`open`/nonnegative, and `closed`/`-1`. Its private custom-operations identity
+uses the exact repository-unique identifier
+`_ocaml_plan9_syscall_capability_v1`. It must reject forged values, every other
+state/descriptor combination, states not accepted by the requested operation,
+and descriptors not owned by this path before native work.
 
 Validation is ordered defensively. Before reading any representation-specific
 payload, the runtime tier checks the immediate/block distinction, the expected
@@ -466,6 +484,12 @@ native compiler is disabled, the rule must not assume that OCaml's `ARCH`
 variable selects amd64. It must use a fact actually present in the configured
 Plan 9 build, fail clearly for unsupported Plan 9 CPUs, and leave non-Plan-9
 builds unchanged.
+
+The repository's `runtime/dune` dependency mirrors must remain synchronized
+with this wiring even though Dune is not the native Plan 9 build lane. Its
+primitive-generation fallback names the integration C source, and its fallback
+runtime rule names that source, the private header, and the checked-in amd64
+assembly input so a sandboxed build receives every required file.
 
 The primitive inventory generator must include every new `CAMLprim` exactly
 once for Plan 9 and never for other targets. Because the existing generator

@@ -1,6 +1,7 @@
 # Phase 0 native syscall veneer roadmap
 
-Status: umbrella roadmap; execute only through the focused subphase handoffs
+Status: umbrella roadmap; Phase 0.1 accepted at
+`0d3ac056a37e597e9673607de591cb8a0b5247bb`; Phase 0.2 is next
 
 ## Authority and required reading
 
@@ -33,6 +34,10 @@ is unclear. If two documents genuinely conflict, stop and ask the user.
 - Local source-and-workflow base:
   `835bc29b0c276a83211a517b950a55f0fb9c2bfe`.
 - Sequential implementation branch: `codex/plan9-native-io-foundation`.
+- Reviewed documentation checkpoint:
+  `4209e21088f8ba0f5c5985fcec79e41d4cffcb77`.
+- Accepted Phase 0.1 checkpoint:
+  `0d3ac056a37e597e9673607de591cb8a0b5247bb`.
 - Preserved rejected prototype:
   `codex/archive/plan9-process-capture-prototype` at
   `1eb780b1b8467d1b80b35102e40371b87dde5604`.
@@ -86,11 +91,12 @@ Phase 0.3: staged byte I/O and complete Phase 0 acceptance
 
 ### Phase 0.1: raw ABI and build proof
 
-Implement the five checked-in amd64 raw syscall entries, private native
+Accepted at `0d3ac056a37e597e9673607de591cb8a0b5247bb`. It implements the five
+checked-in amd64 raw syscall entries, private native
 declarations, architecture/build/archive wiring, and a private native harness
 that calls only those raw entries for the operations under test. Prove the
 assembler and archive facts, raw behavior, raw-object isolation, and cleanup
-rules on native Plan 9.
+rules on native Plan 9; those proofs completed during native qualification.
 
 This subphase adds no `CAMLprim`, opaque ML capability, ML test, installed
 library content, or public API. Its checkpoint proves only the raw tier and its
@@ -98,10 +104,12 @@ build integration.
 
 ### Phase 0.2: capability lifecycle
 
-Starting from an accepted Phase 0.1 checkpoint, implement the private opaque
-runtime capability, guarded pipe publication, deterministic close, native
-failure construction, and dedicated negative-path error probe. Add only the
-private primitives and ML tests needed for those operations.
+Starting from accepted Phase 0.1 code predecessor
+`0d3ac056a37e597e9673607de591cb8a0b5247bb` and the exact user-approved
+Phase 0.2 documentation checkpoint, implement the private opaque runtime
+capability, guarded pipe publication, deterministic close, native failure
+construction, and dedicated negative-path error probe. Add only the private
+primitives and ML tests needed for those operations.
 
 This subphase does not implement general byte read or write primitives. Its
 negative probe may use the already accepted raw read entry internally, but no
