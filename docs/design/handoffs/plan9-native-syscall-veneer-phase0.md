@@ -1,7 +1,8 @@
 # Phase 0 native syscall veneer roadmap
 
 Status: umbrella roadmap; Phase 0.1 accepted at
-`0d3ac056a37e597e9673607de591cb8a0b5247bb`; Phase 0.2 is next
+`0d3ac056a37e597e9673607de591cb8a0b5247bb`; Phase 0.2 accepted at
+`f2bc2dd152a3cb5e5541edc6aee4927ff4c6d83b`; Phase 0.3 is next
 
 ## Authority and required reading
 
@@ -38,14 +39,20 @@ is unclear. If two documents genuinely conflict, stop and ask the user.
   `4209e21088f8ba0f5c5985fcec79e41d4cffcb77`.
 - Accepted Phase 0.1 checkpoint:
   `0d3ac056a37e597e9673607de591cb8a0b5247bb`.
+- Reviewed Phase 0.2 documentation checkpoint:
+  `3c2fe24efb50aff2b7b00795868228712e01848a`.
+- Accepted Phase 0.2 checkpoint:
+  `f2bc2dd152a3cb5e5541edc6aee4927ff4c6d83b`.
 - Preserved rejected prototype:
   `codex/archive/plan9-process-capture-prototype` at
   `1eb780b1b8467d1b80b35102e40371b87dde5604`.
 
-The foundation, this roadmap, and all three subphase handoffs must first be
-committed together as a documentation-only checkpoint. Each executing task
-records its exact starting `HEAD`; the documents cannot record the identity of
-the commit that first contains themselves.
+The foundation, this roadmap, and all three initial subphase handoffs were
+committed together at the first documentation-only checkpoint above. A later
+subphase review is committed as its own documentation-only checkpoint before
+execution. Each executing request names its exact starting `HEAD`; a document
+cannot record the identity of the commit that first contains that revision of
+itself.
 
 Before any subphase edits code, verify that:
 
@@ -104,12 +111,11 @@ build integration.
 
 ### Phase 0.2: capability lifecycle
 
-Starting from accepted Phase 0.1 code predecessor
-`0d3ac056a37e597e9673607de591cb8a0b5247bb` and the exact user-approved
-Phase 0.2 documentation checkpoint, implement the private opaque runtime
-capability, guarded pipe publication, deterministic close, native failure
-construction, and dedicated negative-path error probe. Add only the private
-primitives and ML tests needed for those operations.
+Accepted at `f2bc2dd152a3cb5e5541edc6aee4927ff4c6d83b`. Starting from accepted
+Phase 0.1 and the reviewed documentation checkpoint, it implements the private
+opaque runtime capability, guarded pipe publication, deterministic close,
+native failure construction, and dedicated negative-path error probe, with
+the focused private ML tests needed for those operations.
 
 This subphase does not implement general byte read or write primitives. Its
 negative probe may use the already accepted raw read entry internally, but no
@@ -117,10 +123,12 @@ raw descriptor crosses an ML boundary.
 
 ### Phase 0.3: byte I/O and final acceptance
 
-Starting from an accepted Phase 0.2 checkpoint, add the private validated read
-and write primitives, bounded staging, pending-action ordering, allocation and
-rooting discipline, short/zero-length semantics, and the complete private ML
-test. Then perform the full regression, symbol, packaging, clean-build, and
+Starting from accepted Phase 0.2 checkpoint
+`f2bc2dd152a3cb5e5541edc6aee4927ff4c6d83b` and the exact user-approved Phase
+0.3 documentation checkpoint, add the private validated read and write
+primitives, bounded staging, pending-action ordering, allocation and rooting
+discipline, short/zero-length semantics, and the complete private ML test.
+Then perform the full regression, symbol, packaging, clean-build, and
 installed-prefix qualification required for final Phase 0 acceptance.
 
 Only Phase 0.3 may conclude that Phase 0 is accepted. It must stop for an
@@ -177,9 +185,12 @@ For every subphase:
    storage, and run the subphase's native qualification there.
 7. Report results and stop; do not begin the next subphase.
 
-An install prefix is requested only in Phase 0.3. Never overwrite the
-known-working compiler prefix. No VM snapshot or checkpoint replacement is
-authorized by these handoffs.
+An install prefix is requested only in Phase 0.3. It must be isolated and
+nonexistent unless the user explicitly approves replacement, and the user must
+also choose whether it is retained or removed afterward. Never overwrite the
+known-working compiler prefix `/usr/glenda/lib/unix/ocaml-4.14.3`; Phase 0.3
+records before/after manifests proving it remained unchanged. No VM snapshot
+or checkpoint replacement is authorized by these handoffs.
 
 Do not commit or push implementation changes unless the user explicitly asks
 in the executing task. A later subphase must not begin from an unreviewed,
@@ -190,7 +201,8 @@ known-broken, dirty, or only partially qualified predecessor.
 The detailed criteria live in the foundation and Phase 0.3 handoff. At a
 minimum, final acceptance requires:
 
-- a fresh artifact-free native build of the exact reviewed tree;
+- a fresh artifact-free native build of the exact approved source set from the
+  reviewed worktree;
 - correct checked-in raw entries and archive/build integration;
 - defensively validated opaque capabilities and deterministic ownership;
 - binary pipe round-trip, EOF, short-read, short-write-policy, zero-length,

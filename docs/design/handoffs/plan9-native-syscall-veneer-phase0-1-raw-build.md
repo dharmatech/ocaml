@@ -1,6 +1,6 @@
 # Phase 0.1 raw ABI and build proof handoff
 
-Status: ready for execution after the documentation-only checkpoint
+Status: accepted at `0d3ac056a37e597e9673607de591cb8a0b5247bb`
 
 ## Authority and required reading
 

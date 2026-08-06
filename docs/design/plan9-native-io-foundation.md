@@ -1,7 +1,7 @@
 # OCaml Plan 9 native I/O foundation
 
-Status: accepted design; Phase 0.1 implemented and natively qualified;
-Phase 0.2 is the next delegated subphase
+Status: accepted design; Phase 0.1 and Phase 0.2 implemented, reviewed, and
+natively qualified; Phase 0.3 is the next delegated subphase
 
 Source handoff:
 `C:\Users\dharm\src\caml9\docs\design\handoffs\ocaml-plan9-process-run-capture.md`
@@ -26,6 +26,11 @@ Plan 9-native I/O foundation before implementing capture.
 - Accepted Phase 0.1 raw ABI and build checkpoint:
   `0d3ac056a37e597e9673607de591cb8a0b5247bb`. It is implemented, reviewed,
   natively qualified, committed, and pushed on the feature branch.
+- Reviewed Phase 0.2 documentation checkpoint:
+  `3c2fe24efb50aff2b7b00795868228712e01848a`.
+- Accepted Phase 0.2 capability lifecycle checkpoint:
+  `f2bc2dd152a3cb5e5541edc6aee4927ff4c6d83b`. It is implemented, reviewed,
+  natively qualified, committed, and pushed on the feature branch.
 - Preserved prototype branch:
   `codex/archive/plan9-process-capture-prototype` at
   `1eb780b1b8467d1b80b35102e40371b87dde5604`. It is intentionally
@@ -36,11 +41,12 @@ The feature branch must not be merged and no replacement OCaml release may be
 published until its implemented layers have been reviewed and independently
 qualified on native Plan 9. Commits and pushes require explicit user approval.
 
-Phase 0.2 and Phase 0.3 implementation have not begun. The accepted Phase 0.1
-boundary remains private: five raw amd64 syscall entries, their private
-declarations and bytecode-runtime build integration, and a private native
-harness. It adds no `CAMLprim`, opaque ML capability, public API, installed
-interface, or `plan9.cma` C payload.
+Phase 0.3 implementation has not begun. The accepted private boundary now
+contains the five raw amd64 syscall entries and raw harness from Phase 0.1,
+plus the Phase 0.2 opaque capability lifecycle, guarded pipe publication,
+deterministic close, native-failure construction, negative-path probe, and
+focused ML test. It still adds no public API, installed interface, or
+`plan9.cma` C payload.
 
 ## How to read this document
 
@@ -260,16 +266,18 @@ constructing its result cannot make the uncertain descriptor usable again.
 
 A read primitive does not mutate a caller-supplied OCaml byte block. OCaml
 `string` and `bytes` values have the same runtime tag and cannot be
-distinguished defensively at this boundary. Instead, the primitive allocates,
-fully zero-initializes, and roots its own fresh byte result and allocates,
-initializes to GC-safe placeholders, and roots its structural success blocks
-before the native read. It copies the successful prefix into that value only
-after leaving the blocking section and returns the successful byte count
-separately without a post-read success allocation. Only the first `count`
-bytes contain input; the deterministically zeroed tail contains no native-read
-data. The later `Plan9.Fd.read` layer copies the prefix into its typed caller
-destination. Write input is only read. After pending actions have been
-processed, the runtime tier revalidates the string-tagged source and range,
+distinguished defensively at this boundary. Instead, the primitive allocates
+and roots its own fresh byte result, zero-initializes exactly its logical
+payload while preserving the OCaml block header, padding, and trailing
+string-length offset byte, and allocates, initializes to GC-safe placeholders,
+and roots its structural success blocks before the native read. It copies the
+successful prefix into that value only after leaving the blocking section and
+returns the successful byte count separately without a post-read success
+allocation. Only the first `count` bytes contain input; the deterministically
+zeroed tail contains no native-read data. The later `Plan9.Fd.read` layer
+copies the prefix into its typed caller destination. Write input is only read.
+After pending actions have been processed, the runtime tier revalidates the
+string-tagged source and range,
 copies the current slice into bounded native staging, and only then performs
 the final capability-state validation immediately before blocking.
 
@@ -349,7 +357,9 @@ length. The runtime tier preserves every valid positive count, but an
 exact-write helper must stop and report an actual native short write rather
 than silently completing it with another call. Any wrapper-imposed staging
 chunks must be distinguished from the count requested in the individual
-native call.
+native call. A zero native write result for a positive request is likewise a
+valid preserved count, not EOF or a protocol failure; exact-write policy
+rejects it at the owning ML layer.
 
 Phase 0 proves this policy with a pure-ML helper local to the private test
 suite. The test supplies a fake low-level writer that returns a synthesized
@@ -359,20 +369,22 @@ the remainder. This helper is not production runtime or library code, is not
 installed, and creates no public API. Production exact-write behavior remains
 deferred to the higher layer that owns it.
 
-After capability and range validation, a zero-length read or write returns a
-successful count of zero without issuing a native syscall. A closed, forged,
-or otherwise invalid capability is still rejected when the requested length
-is zero. This avoids injecting a zero-length Plan 9 pipe message, which is
-indistinguishable from EOF to a reader, and gives zero-length reads the normal
-non-consuming behavior.
+Zero-length read and write follow the normal initial validation, success
+preallocation, pending-action processing, callback-mutable revalidation, and
+final open-capability revalidation, then return successful count zero without
+entering a blocking section or issuing a native syscall. A capability closed
+by a pending callback and any initially closed, forged, or otherwise invalid
+capability are still rejected. This avoids injecting a zero-length Plan 9 pipe
+message, which is indistinguishable from EOF to a reader, and gives
+zero-length reads the normal non-consuming behavior.
 
 ### OCaml heap and blocking sections
 
 **Decision.** No raw syscall receives a pointer into a movable OCaml value
-while the runtime is in a blocking section. Reads use a bounded native staging
+while the runtime is in a blocking section. Reads use a 4096-byte native staging
 buffer, then copy the successful byte count into the primitive's fresh, rooted
 OCaml `bytes` result after leaving the blocking section. Writes copy from the
-validated OCaml range into a native staging buffer before entering the
+validated OCaml range into the same bounded native staging before entering the
 blocking section.
 
 For a resource-producing call such as `pipe`, rooted opaque capabilities and
@@ -435,12 +447,15 @@ is published. Failure-result allocation may occur after the native error has
 been captured or an anomalous result has been safely classified and all
 relevant ownership is safe.
 
-The exact per-call staging capacity is a **Phase 0 experiment**. It will be
-bounded, independent of the total stream size, and no larger than both the
-native signed `long` range and a reviewed safe automatic-storage bound for the
-Plan 9 runtime stack. The ML integration accounts for staging-imposed chunks
-separately from the count requested in each native call, so the capacity is not
-a public API property.
+**Phase 0 decision.** The exact private per-call staging capacity is 4096
+bytes. It is independent of total stream size, far below the native signed
+`long` range, and conservatively bounded under the qualified release-11554
+amd64 16 MiB user stack, 64 KiB `Maxatomic`, and default 256 KiB pipe queue.
+Each private primitive accepts lengths only from zero through 4096, never
+clamps, and issues at most one raw syscall whose count exactly equals a
+positive requested length. Larger logical operations are chunked by the
+test-local helper during Phase 0 and by the future owning layer. The capacity
+remains private, uninstalled, and absent from the public API.
 
 ### Child-safe subset
 
@@ -714,10 +729,31 @@ wiring. Add no public `Plan9` API.
 
 Acceptance requires:
 
-- final native qualification starts from a fresh, artifact-free source copy of
-  the exact reviewed Windows tree, transferred without `.git` and placed on
-  native Plan 9 storage; it is configured and built without reusing objects,
-  archives, generated primitive tables, or binaries from an earlier build;
+- final native qualification starts from a fresh, artifact-free copy of the
+  exact approved source set from the reviewed Windows worktree on native Plan
+  9 storage; immediately after final host review and before transfer, that set
+  is defined from every existing worktree file at a path reported by
+  `git ls-files`, using current worktree bytes rather than index or `HEAD`
+  contents, adjusted only for recorded, explicitly reviewed deletions or new
+  source paths; no new source path is expected in Phase 0.3 and one must be
+  reported and justified before VM work; complete untracked and ignored path
+  inventories are recorded separately without modifying or transferring paths
+  outside the approved set, and `.git` is never transferred; only the approved
+  set is copied into a new, previously nonexistent native destination; host
+  and independently produced pre-configure native manifests use the same hash
+  algorithm and must match exactly; both sides emit one canonical tuple per
+  transferred file using a `/`-separated repository-relative path, decimal
+  byte length, and lowercase hexadecimal digest, sort tuples bytewise by
+  normalized path, and compare parsed tuples rather than raw tool output;
+  manifests and comparison evidence stay outside both source trees, `.git`
+  must be absent, and the destination must contain exactly the manifested set
+  with no additional file or prior configure/build output; the transfer-set
+  basis, reviewed additions or deletions, untracked and ignored inventories,
+  exclusions, manifest commands, tool identities, algorithm, comparison
+  result, and destination are recorded, because Git identity alone cannot
+  describe intentionally uncommitted qualification changes; the tree is then
+  configured and built without reusing objects, archives, generated primitive
+  tables, or binaries from an earlier native build;
 - a private test-only native harness exercises raw pipe, logical read, logical
   write, close, and immediate error capture without passing its raw pipe
   descriptors through APE, while raw-object auditing remains isolated from
@@ -743,8 +779,9 @@ Acceptance requires:
   before native work, then revalidates any state or write-source range a
   callback could have changed and snapshots the current write slice before
   final capability-state validation;
-- source review proves that successful final capability validation for read,
-  write, and close is followed immediately by
+- source review proves that successful final capability validation on every
+  native-work path for nonzero read, nonzero write, and open close is followed
+  immediately by
   `caml_enter_blocking_section_no_pending`, with no allocation, safe point, or
   pending-action processing in between;
 - source review proves that capability validation checks outer shape, tag,
@@ -757,6 +794,18 @@ Acceptance requires:
   capabilities; forged or wrong-state values and reads or writes through a
   closed capability fail before native work, while repeated close is
   idempotent without another syscall;
+- a deterministic numeric-boundary matrix covers negative, exact-capacity
+  `4096`, oversized `4097`, and `max_int` read lengths, plus exact invalid
+  write `(position, length)` tuples `(-1, 0)`, `(0, -1)`,
+  `(source_length + 1, 0)`, `(source_length, 1)`, `(0, 4097)`,
+  `(max_int, 1)`, and `(1, max_int)`; every invalid case returns kind `0`
+  before pending processing or native work, while read capacity `4096`, write
+  `(source_length, 0)`, and write `(1, 4096)` succeed under their stated
+  data-ready, no-native-work, and valid-source-range conditions;
+- the multi-chunk native round trip reuses one original payload of exactly
+  `2 * 4096 + 3` bytes without per-chunk ML source copies and records write
+  `(position, length)` calls `(0, 4096)`, `(4096, 4096)`, and `(8192, 3)`,
+  paired with read request lengths `4096`, `4096`, and `3`;
 - zero-length read and write on an open capability return zero without native
   work; a zero-length read consumes no queued byte, a zero-length write creates
   no EOF-like pipe message, and a closed capability remains an error;
@@ -771,28 +820,49 @@ Acceptance requires:
   reference APE I/O/process wrappers or private direct-entry symbols;
 - source inspection proves the raw assembly objects have no undefined library
   calls;
-- an executed `clean` and `distclean` check on a disposable native tree proves
-  that both targets preserve the checked-in assembly source and remove its
-  derived object;
+- an executed cleanup sequence from the root of a disposable configured native
+  tree uses the recorded GNU Make executable for root `clean`,
+  `-C runtime plan9_syscall_amd64.o`, and root `distclean`; it proves
+  independently that `clean` preserves the checked-in assembly and removes
+  its object, that the object alone can then be rebuilt, and that `distclean`
+  again preserves the source while removing the object, root configuration
+  files, and configured runtime headers;
 - existing Plan 9 tests still pass; and
 - `plan9.cma` remains ML-only and ordinary installed use still needs no
   `-custom`, alternate runtime, compiler, linker, or wrapper compiler.
 
-When installation is authorized, prove the final packaging criterion with a
-focused private pipe smoke test compiled by the installed `ocamlc`, linked by
-an ordinary bytecode link with the installed `plan9.cma`, and run by the
-installed `ocamlrun`. The test must exercise at least private primitive pipe
-creation, write, read, EOF, and close. It must use no `-custom`, `-use-runtime`,
-C compiler, linker, wrapper compiler, or additional archive. Record the exact
-compiler, runtime, and library paths and confirm that execution used the
-installed runtime rather than a source-tree runtime. Run from a fresh native
-directory outside the source and build trees, with `OCAMLLIB`, legacy
-`CAMLLIB`, and `CAML_LD_LIBRARY_PATH` unset, and use no source- or build-tree
-`-I` path. Record the installed `ocamlc -where` result and verify that it lies
-inside the approved test prefix. Source-tree execution, source-tree artifact
-resolution, or installed-file inventory alone does not satisfy this criterion.
+When installation is authorized, prove the final packaging criterion with the
+manifest-verified expanded
+`otherlibs/plan9/tests/syscall_capability_test.ml` from the exact reviewed
+authoritative worktree copied into a fresh native directory. Before
+compilation, verify that the copied file's content hash matches its native
+source-manifest entry. Compile and link it with the installed `ocamlc` using
+the ordinary consumer command shape
+`<installed ocamlc> -I +plan9 -linkall plan9.cma <copied test>.ml -o <smoke>`,
+then run it with the installed `ocamlrun`. The test must exercise at least
+private primitive pipe creation, write, read, EOF, and close.
+It must use no `-custom`, `-use-runtime`, C compiler, linker, wrapper compiler,
+or additional archive. Record the exact compiler, runtime, and library paths
+and confirm that execution used the installed runtime rather than a
+source-tree runtime. Run outside the source and build trees, with
+`OCAMLPARAM`, `OCAMLLIB`, legacy `CAMLLIB`, and `CAML_LD_LIBRARY_PATH` unset,
+use no source- or build-tree `-I` path, use exactly `-I +plan9` as the only
+explicit include path, and keep the fresh smoke-test directory free of a
+competing `plan9.cma`. Record the exact installed `ocamlc -where` result,
+verify that it lies inside the approved test prefix, verify that `+plan9`
+resolves to its `plan9` subdirectory, and verify and record the existence and
+content hash of the derived absolute
+`<installed ocamlc -where>/plan9/plan9.cma`. Source-tree execution, source-tree
+artifact resolution, or installed-file inventory alone does not satisfy this
+criterion.
 
-No installed prefix is changed until the user approves an isolated test prefix.
+No installed prefix is changed until the user approves an isolated test
+prefix, whether it is created or explicitly replaced, and whether it is
+retained or removed afterward. It must be nonexistent before install unless
+replacement is explicitly approved. The known-working prefix
+`/usr/glenda/lib/unix/ocaml-4.14.3` is protected; sorted path, length, and
+content-hash manifests before and after qualification must prove it remained
+byte-for-byte unchanged.
 No VM is started until the user confirms the instance, loopback address, and
 action.
 
