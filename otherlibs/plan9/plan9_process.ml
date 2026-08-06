@@ -12,23 +12,23 @@
 (*                                                                        *)
 (**************************************************************************)
 
-type error_kind =
+type error_kind = Plan9_types.error_kind =
   | No_children
   | Interrupted
   | Invalid_argument
   | Protocol_error
   | Other
 
-type error = {
+type error = Plan9_types.error = {
   operation : string;
   kind : error_kind;
   message : string;
 }
 
-type pid = int
-type process_id = int64
+type pid = Plan9_types.pid
+type process_id = Plan9_types.process_id
 
-type wait_msg = {
+type wait_msg = Plan9_types.wait_msg = {
   pid : pid;
   user_time_ms : int64;
   system_time_ms : int64;
@@ -36,14 +36,14 @@ type wait_msg = {
   message : string;
 }
 
-let wait_succeeded wait_msg = wait_msg.message = ""
+let wait_succeeded = Plan9_types.wait_succeeded
 
-type native_failure = {
+type native_failure = Plan9_types.native_failure = {
   native_kind : int;
   native_message : string;
 }
 
-type native_pending = {
+type native_pending = Plan9_primitive.native_pending = {
   native_process_id : int64;
   native_pid : int;
   native_handshake : int;
@@ -51,7 +51,7 @@ type native_pending = {
   native_queue_loss : native_failure option;
 }
 
-type native_wait_event = {
+type native_wait_event = Plan9_primitive.native_wait_event = {
   native_sequence : int64;
   native_event_kind : int;
   native_wait_pid : int;
@@ -80,22 +80,7 @@ module type Native = sig
   val acknowledge_wait : int64 -> bool
 end
 
-let error_kind_of_native native_kind native_message =
-  match native_kind, native_message with
-  | 0, _ -> Invalid_argument
-  | 2, _ -> Interrupted
-  | 3, "no living children" -> No_children
-  | 3, _ -> Protocol_error
-  | 4, _ -> Protocol_error
-  | _ -> Other
-
-let error_of_native operation native =
-  {
-    operation;
-    kind =
-      error_kind_of_native native.native_kind native.native_message;
-    message = native.native_message;
-  }
+let error_of_native = Plan9_types.error_of_native
 
 module Make (Native : Native) = struct
   type stdout =

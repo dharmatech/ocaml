@@ -13,12 +13,13 @@
 #**************************************************************************
 
 LIBNAME=plan9
-CAMLOBJS=plan9_process.cmo plan9.cmo
+CAMLOBJS=plan9_types.cmo plan9_primitive.cmo plan9_process.cmo plan9.cmo
 CMIFILES=plan9.cmi
 INSTALL_LIBDIR_SUFFIX=/plan9
 
 ENV_TEST_PROGRAM=tests/env_test$(EXE)
 PROCESS_STATE_TEST_PROGRAM=tests/process_state_test$(EXE)
+PROCESS_STATE_PRIMITIVES=tests/process_state_primitives
 PROCESS_PRIMITIVE_TEST_PROGRAM=tests/process_primitive_validation_test$(EXE)
 PROCESS_NATIVE_TEST_PROGRAM=tests/process_native_integration_test$(EXE)
 PROCESS_NATIVE_HELPER=tests/process_native_helper$(EXE)
@@ -47,10 +48,8 @@ TEST_PROGRAMS=$(ML_TEST_PROGRAMS) $(NATIVE_TEST_PROGRAMS)
 TEST_SUFFIX?=manual
 CLEANFILES=$(TEST_PROGRAMS) $(PROCESS_NATIVE_HELPER_OBJECT) \
   $(PROCESS_FRAME_TEST_OBJECT) $(RAW_SYSCALL_TEST_OBJECT) \
+  $(PROCESS_STATE_PRIMITIVES) $(PROCESS_STATE_PRIMITIVES).tmp \
   tests/*.cmi tests/*.cmo
-
-plan9.cmo: plan9.cmi plan9_process.cmi
-plan9.cmx: plan9.cmi plan9_process.cmx
 
 .PHONY: depend test test-native-interruption
 
@@ -80,9 +79,17 @@ test-native-interruption: all $(PROCESS_NATIVE_TEST_PROGRAM) \
 $(ENV_TEST_PROGRAM): tests/env_test.ml plan9.cma plan9.cmi
 	$(CAMLC) -I . plan9.cma tests/env_test.ml -o $@
 
+$(PROCESS_STATE_PRIMITIVES): $(ROOTDIR)/runtime/primitives
+	grep -v '^caml_plan9_' $< > $@.tmp
+	mv $@.tmp $@
+
 $(PROCESS_STATE_TEST_PROGRAM): tests/process_state_test.ml \
-    plan9_process.cmo
-	$(CAMLC) -I . plan9_process.cmo tests/process_state_test.ml -o $@
+    $(PROCESS_STATE_PRIMITIVES) \
+    plan9_types.cmo plan9_process.cmo
+	$(BOOT_OCAMLC) -nostdlib -I $(ROOTDIR)/stdlib -I . \
+	  -use-prims $(PROCESS_STATE_PRIMITIVES) \
+	  plan9_types.cmo plan9_process.cmo \
+	  tests/process_state_test.ml -o $@
 
 $(PROCESS_PRIMITIVE_TEST_PROGRAM): \
     tests/process_primitive_validation_test.ml plan9.cma plan9.cmi

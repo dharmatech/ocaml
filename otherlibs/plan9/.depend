@@ -1,12 +1,35 @@
 plan9.cmo : \
+    plan9_types.cmi \
     plan9_process.cmi \
+    plan9_primitive.cmi \
     plan9.cmi
 plan9.cmx : \
+    plan9_types.cmx \
     plan9_process.cmx \
+    plan9_primitive.cmx \
     plan9.cmi
 plan9.cmi :
+plan9_primitive.cmo : \
+    plan9_types.cmi \
+    plan9_primitive.cmi
+plan9_primitive.cmx : \
+    plan9_types.cmx \
+    plan9_primitive.cmi
+plan9_primitive.cmi : \
+    plan9_types.cmi
 plan9_process.cmo : \
+    plan9_types.cmi \
+    plan9_primitive.cmi \
     plan9_process.cmi
 plan9_process.cmx : \
+    plan9_types.cmx \
+    plan9_primitive.cmx \
     plan9_process.cmi
-plan9_process.cmi :
+plan9_process.cmi : \
+    plan9_types.cmi \
+    plan9_primitive.cmi
+plan9_types.cmo : \
+    plan9_types.cmi
+plan9_types.cmx : \
+    plan9_types.cmi
+plan9_types.cmi :
