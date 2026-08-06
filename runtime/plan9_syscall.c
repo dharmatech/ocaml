@@ -38,7 +38,9 @@ enum {
   P9S_CAPABILITY_CLOSED = 2,
 
   P9S_ACCEPT_OPEN = 1 << P9S_CAPABILITY_OPEN,
-  P9S_ACCEPT_CLOSED = 1 << P9S_CAPABILITY_CLOSED
+  P9S_ACCEPT_CLOSED = 1 << P9S_CAPABILITY_CLOSED,
+
+  P9S_STAGING_CAPACITY = 4096
 };
 
 struct p9s_capability {
@@ -234,6 +236,70 @@ static int p9s_validate_capability(value input, int accepted_states,
   return 1;
 }
 
+static int p9s_validate_requested_length(value input, intnat *length,
+                                         struct p9s_failure *failure)
+{
+  intnat decoded;
+
+  if (!Is_long(input)) {
+    p9s_set_failure(failure, P9S_NATIVE_INVALID,
+                    "requested length is not an integer");
+    return 0;
+  }
+  decoded = Long_val(input);
+  if (decoded < 0 || decoded > P9S_STAGING_CAPACITY) {
+    p9s_set_failure(failure, P9S_NATIVE_INVALID,
+                    "requested length is outside the staging capacity");
+    return 0;
+  }
+  *length = decoded;
+  return 1;
+}
+
+static int p9s_validate_write_range(value source, value position_value,
+                                    value length_value, intnat *position,
+                                    intnat *length,
+                                    struct p9s_failure *failure)
+{
+  mlsize_t source_length;
+  intnat decoded_position;
+  intnat decoded_length;
+
+  if (!Is_block(source) || Tag_val(source) != String_tag) {
+    p9s_set_failure(failure, P9S_NATIVE_INVALID,
+                    "write source is not a byte string");
+    return 0;
+  }
+  if (!Is_long(position_value)) {
+    p9s_set_failure(failure, P9S_NATIVE_INVALID,
+                    "write position is not an integer");
+    return 0;
+  }
+  if (!p9s_validate_requested_length(length_value, &decoded_length,
+                                     failure)) {
+    return 0;
+  }
+
+  decoded_position = Long_val(position_value);
+  if (decoded_position < 0) {
+    p9s_set_failure(failure, P9S_NATIVE_INVALID,
+                    "write position is negative");
+    return 0;
+  }
+  source_length = caml_string_length(source);
+  if ((uintnat) decoded_position > source_length
+      || (uintnat) decoded_length
+           > source_length - (mlsize_t) decoded_position) {
+    p9s_set_failure(failure, P9S_NATIVE_INVALID,
+                    "write range is outside the source");
+    return 0;
+  }
+
+  *position = decoded_position;
+  *length = decoded_length;
+  return 1;
+}
+
 CAMLprim value caml_plan9_syscall_pipe(value unit)
 {
   CAMLparam1(unit);
@@ -346,6 +412,144 @@ CAMLprim value caml_plan9_syscall_close(value capability)
 
   if (result == 0) CAMLreturn(success);
   CAMLreturn(p9s_alloc_error(&failure));
+}
+
+CAMLprim value caml_plan9_syscall_read(value capability,
+                                       value requested_length)
+{
+  CAMLparam2(capability, requested_length);
+  CAMLlocal3(buffer, pair, success);
+  struct p9s_failure failure;
+  unsigned char staging[P9S_STAGING_CAPACITY];
+  intnat length;
+  mlsize_t index;
+  int descriptor;
+  int state;
+  long result;
+
+  if (!p9s_validate_requested_length(requested_length, &length, &failure)) {
+    CAMLreturn(p9s_alloc_error(&failure));
+  }
+  if (!p9s_validate_capability(capability, P9S_ACCEPT_OPEN, &state,
+                               &failure)) {
+    CAMLreturn(p9s_alloc_error(&failure));
+  }
+
+  buffer = caml_alloc_string((mlsize_t) length);
+  for (index = 0; index < (mlsize_t) length; index++) {
+    Bytes_val(buffer)[index] = 0;
+  }
+  pair = caml_alloc_tuple(2);
+  Store_field(pair, 0, buffer);
+  Store_field(pair, 1, Val_int(0));
+  success = caml_alloc_small(1, 0);
+  Store_field(success, 0, pair);
+
+  p9s_initialize_failure(&failure);
+  descriptor = -1;
+  result = 0;
+
+  if (caml_check_pending_actions()) caml_process_pending_actions();
+
+  if (!p9s_validate_capability(capability, P9S_ACCEPT_OPEN, &state,
+                               &failure)) {
+    CAMLreturn(p9s_alloc_error(&failure));
+  }
+  {
+    struct p9s_capability *payload;
+
+    payload = (struct p9s_capability *) Data_custom_val(capability);
+    descriptor = payload->descriptor;
+  }
+  if (length == 0) CAMLreturn(success);
+
+  caml_enter_blocking_section_no_pending();
+  result = caml_plan9_sys_pread(descriptor, staging, (long) length,
+                                CAML_PLAN9_SYSCALL_STREAM_OFFSET);
+  if (result < 0) p9s_capture_failure(&failure);
+  caml_leave_blocking_section();
+
+  if (result < 0) CAMLreturn(p9s_alloc_error(&failure));
+  if (result > (long) length) {
+    p9s_set_failure(&failure, P9S_NATIVE_PROTOCOL,
+                    "raw PREAD returned an invalid success count");
+    CAMLreturn(p9s_alloc_error(&failure));
+  }
+
+  for (index = 0; index < (mlsize_t) result; index++) {
+    Bytes_val(buffer)[index] = staging[index];
+  }
+  Store_field(pair, 1, Val_long(result));
+  CAMLreturn(success);
+}
+
+CAMLprim value caml_plan9_syscall_write(value capability, value source,
+                                        value position,
+                                        value requested_length)
+{
+  CAMLparam4(capability, source, position, requested_length);
+  CAMLlocal1(success);
+  struct p9s_failure failure;
+  unsigned char staging[P9S_STAGING_CAPACITY];
+  intnat decoded_position;
+  intnat length;
+  mlsize_t index;
+  int descriptor;
+  int state;
+  long result;
+
+  if (!p9s_validate_capability(capability, P9S_ACCEPT_OPEN, &state,
+                               &failure)) {
+    CAMLreturn(p9s_alloc_error(&failure));
+  }
+  if (!p9s_validate_write_range(source, position, requested_length,
+                                &decoded_position, &length, &failure)) {
+    CAMLreturn(p9s_alloc_error(&failure));
+  }
+
+  success = caml_alloc_small(1, 0);
+  Store_field(success, 0, Val_int(0));
+
+  p9s_initialize_failure(&failure);
+  descriptor = -1;
+  result = 0;
+
+  if (caml_check_pending_actions()) caml_process_pending_actions();
+
+  if (!p9s_validate_write_range(source, position, requested_length,
+                                &decoded_position, &length, &failure)) {
+    CAMLreturn(p9s_alloc_error(&failure));
+  }
+  for (index = 0; index < (mlsize_t) length; index++) {
+    staging[index] = Bytes_val(source)[(mlsize_t) decoded_position + index];
+  }
+  if (!p9s_validate_capability(capability, P9S_ACCEPT_OPEN, &state,
+                               &failure)) {
+    CAMLreturn(p9s_alloc_error(&failure));
+  }
+  {
+    struct p9s_capability *payload;
+
+    payload = (struct p9s_capability *) Data_custom_val(capability);
+    descriptor = payload->descriptor;
+  }
+  if (length == 0) CAMLreturn(success);
+
+  caml_enter_blocking_section_no_pending();
+  result = caml_plan9_sys_pwrite(descriptor, staging, (long) length,
+                                 CAML_PLAN9_SYSCALL_STREAM_OFFSET);
+  if (result < 0) p9s_capture_failure(&failure);
+  caml_leave_blocking_section();
+
+  if (result < 0) CAMLreturn(p9s_alloc_error(&failure));
+  if (result > (long) length) {
+    p9s_set_failure(&failure, P9S_NATIVE_PROTOCOL,
+                    "raw PWRITE returned an invalid success count");
+    CAMLreturn(p9s_alloc_error(&failure));
+  }
+
+  Store_field(success, 0, Val_long(result));
+  CAMLreturn(success);
 }
 
 CAMLprim value caml_plan9_syscall_negative_read_probe(value unit)
