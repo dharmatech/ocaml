@@ -118,11 +118,14 @@ an overflowing sum.
 
 After range validation, authorize the owner:
 
-- a public call requires an open, detached cell;
-- an attached or owner-closed cell rejects every public call;
-- a publicly closed cell rejects read and write;
-- a private call requires the exact committed attachment token;
-- a stale, uncommitted, losing, or owner-closed token rejects I/O; and
+- a public call requires the stable open-and-detached state;
+- public-closing, publicly closed, attached, owner-closing, and owner-closed
+  cells reject every public read and write;
+- a private call requires both the stable attached state and the exact
+  committed attachment token;
+- a stale, uncommitted, or losing token rejects I/O in every state;
+- even the exact committed token rejects I/O while its owner-close attempt is
+  active or inactive, and after the cell is owner-closed; and
 - invalid lifecycle or authorization returns `Invalid_argument` without a
   primitive call.
 
@@ -237,8 +240,10 @@ retry automatically. The public API does not claim transactional writes.
 Extend the Phase 1.2 private token interface with typed `read` and `write`
 operations having the same byte range, one-transfer, error, short-I/O,
 zero-length, and interruption semantics as the public functions. The only
-difference is authorization: the exact committed token may operate while all
-public aliases reject.
+difference is authorization: the exact committed token may operate only while
+the cell remains in the stable attached state, while all public aliases
+reject. Once owner close begins, both its active and inactive attempt states
+reject I/O through every token without primitive work.
 
 Public and private paths must share one implementation of range validation,
 primitive result validation, error mapping, and transfer policy. Do not copy a

@@ -595,14 +595,19 @@ end
 `of_fd` transfers operational ownership to the channel. Once it returns `Ok`,
 retained aliases of the originating `Fd.t` are attached and reject further
 descriptor operations; closing the channel closes and terminalizes the shared
-cell. A closed or already attached handle returns a structured
+cell. A closing, closed, or already attached handle returns a structured
 `Invalid_argument` error without native work. The channel value and enclosing
 `Ok` block are allocated before the single no-allocation state transition to
 `Attached`. The implementation rechecks that the cell is still open and
 detached immediately before that transition; no fallible allocation occurs
-between the transition and return. If any earlier allocation fails or the
-operation returns `Error`, the original descriptor remains operational. The
-channel adds ML-owned buffering and never registers the descriptor with APE.
+between the transition and return. If an earlier allocation fails before any
+competing alias acts, the original descriptor remains open and detached. If
+the final commit loses, no ownership transfers to the failed channel and no
+channel escapes, but the shared cell retains the exact state established by
+the competing alias; it may already be closing, closed, or attached to another
+owner. An `Error` therefore does not by itself promise that the originating
+descriptor remains operational. The channel adds ML-owned buffering and never
+registers the descriptor with APE.
 
 Input is binary. A line ends only at byte `0x0a`; the terminator is omitted.
 Carriage return and embedded NUL are ordinary bytes. Empty input yields no
