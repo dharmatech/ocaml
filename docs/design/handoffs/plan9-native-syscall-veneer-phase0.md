@@ -1,8 +1,7 @@
 # Phase 0 native syscall veneer roadmap
 
-Status: umbrella roadmap; Phase 0.1 accepted at
-`0d3ac056a37e597e9673607de591cb8a0b5247bb`; Phase 0.2 accepted at
-`f2bc2dd152a3cb5e5541edc6aee4927ff4c6d83b`; Phase 0.3 is next
+Status: completed umbrella roadmap; Phase 0 accepted at
+`aa627e94e9db4a680a30c8e3671a00e709a97320`
 
 ## Authority and required reading
 
@@ -43,6 +42,10 @@ is unclear. If two documents genuinely conflict, stop and ask the user.
   `3c2fe24efb50aff2b7b00795868228712e01848a`.
 - Accepted Phase 0.2 checkpoint:
   `f2bc2dd152a3cb5e5541edc6aee4927ff4c6d83b`.
+- Reviewed Phase 0.3 documentation checkpoint:
+  `dcbb9f2d2b31a31a7ccf6d946957fa5e132df3d1`.
+- Accepted Phase 0 and Phase 0.3 checkpoint:
+  `aa627e94e9db4a680a30c8e3671a00e709a97320`.
 - Preserved rejected prototype:
   `codex/archive/plan9-process-capture-prototype` at
   `1eb780b1b8467d1b80b35102e40371b87dde5604`.
@@ -123,7 +126,8 @@ raw descriptor crosses an ML boundary.
 
 ### Phase 0.3: byte I/O and final acceptance
 
-Starting from accepted Phase 0.2 checkpoint
+Accepted at `aa627e94e9db4a680a30c8e3671a00e709a97320`. Starting from accepted
+Phase 0.2 checkpoint
 `f2bc2dd152a3cb5e5541edc6aee4927ff4c6d83b` and the exact user-approved Phase
 0.3 documentation checkpoint, add the private validated read and write
 primitives, bounded staging, pending-action ordering, allocation and rooting
@@ -131,8 +135,8 @@ discipline, short/zero-length semantics, and the complete private ML test.
 Then perform the full regression, symbol, packaging, clean-build, and
 installed-prefix qualification required for final Phase 0 acceptance.
 
-Only Phase 0.3 may conclude that Phase 0 is accepted. It must stop for an
-architectural regroup before `Plan9.Fd`.
+Phase 0.3 concluded that Phase 0 is accepted and stopped for an architectural
+regroup before `Plan9.Fd`.
 
 ## Shared invariants
 

@@ -1,8 +1,8 @@
 # Phase 0.3 byte I/O and final acceptance handoff
 
-Status: reviewed execution handoff; Phase 0.1 accepted at
-`0d3ac056a37e597e9673607de591cb8a0b5247bb`; Phase 0.2 accepted at
-`f2bc2dd152a3cb5e5541edc6aee4927ff4c6d83b`
+Status: accepted at `aa627e94e9db4a680a30c8e3671a00e709a97320`;
+Phase 0.1 accepted at `0d3ac056a37e597e9673607de591cb8a0b5247bb`;
+Phase 0.2 accepted at `f2bc2dd152a3cb5e5541edc6aee4927ff4c6d83b`
 
 ## Authority and required reading
 

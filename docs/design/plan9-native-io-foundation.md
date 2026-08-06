@@ -1,7 +1,8 @@
 # OCaml Plan 9 native I/O foundation
 
-Status: accepted design; Phase 0.1 and Phase 0.2 implemented, reviewed, and
-natively qualified; Phase 0.3 is the next delegated subphase
+Status: accepted design; Phase 0 implemented, reviewed, and natively
+qualified at `aa627e94e9db4a680a30c8e3671a00e709a97320`; Phase 1 handoffs are
+drafted for review
 
 Source handoff:
 `C:\Users\dharm\src\caml9\docs\design\handoffs\ocaml-plan9-process-run-capture.md`
@@ -31,6 +32,11 @@ Plan 9-native I/O foundation before implementing capture.
 - Accepted Phase 0.2 capability lifecycle checkpoint:
   `f2bc2dd152a3cb5e5541edc6aee4927ff4c6d83b`. It is implemented, reviewed,
   natively qualified, committed, and pushed on the feature branch.
+- Reviewed Phase 0.3 documentation checkpoint:
+  `dcbb9f2d2b31a31a7ccf6d946957fa5e132df3d1`.
+- Accepted Phase 0 and Phase 0.3 byte-I/O checkpoint:
+  `aa627e94e9db4a680a30c8e3671a00e709a97320`. It is implemented, reviewed,
+  natively qualified, committed, and pushed on the feature branch.
 - Preserved prototype branch:
   `codex/archive/plan9-process-capture-prototype` at
   `1eb780b1b8467d1b80b35102e40371b87dde5604`. It is intentionally
@@ -41,12 +47,11 @@ The feature branch must not be merged and no replacement OCaml release may be
 published until its implemented layers have been reviewed and independently
 qualified on native Plan 9. Commits and pushes require explicit user approval.
 
-Phase 0.3 implementation has not begun. The accepted private boundary now
-contains the five raw amd64 syscall entries and raw harness from Phase 0.1,
-plus the Phase 0.2 opaque capability lifecycle, guarded pipe publication,
-deterministic close, native-failure construction, negative-path probe, and
-focused ML test. It still adds no public API, installed interface, or
-`plan9.cma` C payload.
+Phase 0 is accepted. The private boundary contains the five raw amd64 syscall
+entries and raw harness, opaque capability lifecycle, guarded pipe
+publication, deterministic close, native-failure construction, negative-path
+probe, staged byte read/write integration, and complete focused ML test. It
+still adds no public API, installed interface, or `plan9.cma` C payload.
 
 ## How to read this document
 
@@ -883,7 +888,9 @@ The shared roadmap is
 `docs/design/handoffs/plan9-native-syscall-veneer-phase0.md`. Each subphase owns
 its implementation and native validation, reports, and stops. The next begins
 only from a reviewed, user-approved checkpoint. Only Phase 0.3 may declare
-Phase 0 accepted or begin the architectural regroup before `Plan9.Fd`.
+Phase 0 accepted or begin the architectural regroup before `Plan9.Fd`. Phase
+0.3 completed that gate at
+`aa627e94e9db4a680a30c8e3671a00e709a97320`.
 
 ### Phase 1: `Plan9.Fd`
 
@@ -891,6 +898,24 @@ Review and implement the abstract ownership cell, native pipe construction,
 byte reads/writes, deterministic close, forged primitive validation,
 use-after-close behavior, alias close behavior, short I/O, interruption
 policy, and descriptor-leak tests.
+
+#### Phase 1 execution subdivision
+
+Phase 1 is proposed as three sequential focused handoffs:
+
+1. `docs/design/handoffs/plan9-native-fd-phase1-1-private-ml-regroup.md`
+   establishes the private one-way ML module boundaries without a public API
+   change;
+2. `docs/design/handoffs/plan9-native-fd-phase1-2-ownership-lifecycle.md`
+   adds the internal shared ownership cell, native pipe/close, alias behavior,
+   and private attachment protocol; and
+3. `docs/design/handoffs/plan9-native-fd-phase1-3-byte-io-acceptance.md`
+   adds typed byte I/O, publishes the complete public module, and performs
+   final Phase 1 qualification.
+
+The shared draft roadmap is
+`docs/design/handoffs/plan9-native-fd-phase1.md`. These documents are not
+execution authority until reviewed and checkpointed with user approval.
 
 ### Phase 2: `Plan9.In_channel`
 
