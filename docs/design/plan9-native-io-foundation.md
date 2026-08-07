@@ -78,6 +78,11 @@ Each requirement is one of the following:
 - **Non-goal**: excluded from this work.
 - **Acceptance criterion**: evidence required before a layer is accepted.
 
+Phase 0 and Phase 1 sections retain their accepted design and qualification
+contracts as historical records. Phase 2 consumes them as fixed predecessors;
+it must not repeat or reopen their completed gates unless new evidence requires
+revising the owning design.
+
 The first implementation milestone was only the private syscall veneer and
 its proof. The broader module map is included so that this foundation does not
 accidentally force later layers into an unsuitable dependency structure.
