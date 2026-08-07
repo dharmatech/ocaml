@@ -10,12 +10,15 @@ and installed-prefix work on native Plan 9 storage.
 
 ## Required preflight
 
-Before running or diagnosing any native configure, build, test, or installation
-command, read `build-aux/plan9/README.md` completely from the current
-authoritative checkout. Treat it as the canonical build procedure and follow
-its shell setup exactly. Enter APE through `ape/psh`; do not substitute manual
-namespace binds or ad hoc command adapters. If a documented command cannot be
-used, stop and report the exact discrepancy before choosing an alternative.
+Before any native toolchain setup or build action, read the top-level
+`README.md` completely from the current authoritative checkout. Treat it as the
+canonical end-to-end entry point. When configuring, building, testing,
+installing, or diagnosing OCaml itself, also read
+`build-aux/plan9/README.md` completely for the helper-specific procedure.
+Follow the documented shell setup exactly. Enter APE through `ape/psh`; do not
+substitute manual namespace binds or ad hoc command adapters. If a documented
+command cannot be used, stop and report the exact discrepancy before choosing
+an alternative.
 
 ## Boundaries
 
