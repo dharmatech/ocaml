@@ -1,9 +1,8 @@
 # Phase 1.2 `Plan9.Fd` ownership lifecycle handoff
 
-Status: draft execution handoff for review; accepted Phase 1.1 predecessor
-`fff8fc57552523e37a03dcf55a98466d471a9b8a`, with reviewed Phase 1
-documentation predecessor
-`9369474ed38cf35bb0bf699e28d617a88c534e07`
+Status: accepted and completed; Phase 1.2 checkpoint
+`ff4a65b9b0b99c10725957fe318cebce95f0e968`; final Phase 1 checkpoint
+`ee8f799bba40f2ed8caa57a4ef7e91726f2f4283`
 
 ## Authority and required reading
 
@@ -31,10 +30,10 @@ Work only in `C:\Users\dharm\src\ocaml` on
 `codex/plan9-native-io-foundation`. The accepted code predecessor is exactly
 `fff8fc57552523e37a03dcf55a98466d471a9b8a`; its reviewed documentation
 predecessor is exactly
-`9369474ed38cf35bb0bf699e28d617a88c534e07`. The executing request must also
-name the exact user-approved Phase 1.2 documentation-checkpoint `HEAD`
-created after review of this refined handoff. Verify a clean index and
-worktree, expected branch and remote tracking state, and no unrelated history.
+`9369474ed38cf35bb0bf699e28d617a88c534e07`. The reviewed Phase 1.2
+documentation-checkpoint `HEAD` is exactly
+`fab00d79c52990c5203845e38dd62da24e531a18`. Verify a clean index and worktree,
+expected branch and remote tracking state, and no unrelated history.
 
 Do not begin from an uncommitted, dirty, unqualified, or rejected Phase 1.1.
 Do not stash, reset, clean, or absorb unrelated work.

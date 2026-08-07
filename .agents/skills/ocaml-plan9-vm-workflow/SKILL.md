@@ -20,11 +20,25 @@ manifest URL or endpoint map.
 - `checkpoint-local-network-baseline-001`: halted protected baseline containing
   only the selected Drawterm-ready image plus the local IPv4 DNS customization.
   Never boot it directly.
-- `dev`: long-lived mutable development instance copied from the protected
-  baseline.
+- `checkpoint-010-gnu-make-4.4.1-private`: halted protected baseline derived
+  from the local-network baseline with the documented GNU Make 4.4.1 build
+  installed. It is the preferred clean seed for compiler-development
+  instances. Never boot it directly.
+- `dev`: long-lived mutable development instance. Inspect its current identity
+  and state before deciding whether its incremental native OCaml tree is useful.
 - `scratch-<purpose>-NNN`: optional disposable instance copied from a halted
   checkpoint for one bounded experiment.
-- `runs`: host logs. Give every real start a new serial-log path.
+- `runs`: host logs and accepted private evidence. Give every real start a new
+  serial-log path. Other exchange or artifact siblings are not VM instances;
+  verify the expected P9QEMU metadata and disk before treating a directory as
+  one.
+
+For ordinary incremental work, inspect and reuse `dev` when its state suits the
+task. For clean compiler-development work, copy the halted GNU Make checkpoint
+to a new absent mutable sibling; do not overwrite `dev`. The checkpoint makes
+no assumption that an OCaml checkout or build already exists. Final native
+qualification still uses a fresh native source tree even when the surrounding
+guest is reused.
 
 Treat loopback addresses as per-start leases. Keep `127.0.0.1` available for
 the ordinary P9QEMU lane. Select a currently unused canonical IPv4 loopback

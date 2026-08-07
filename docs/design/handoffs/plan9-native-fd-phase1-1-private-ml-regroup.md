@@ -1,7 +1,8 @@
 # Phase 1.1 private ML regroup handoff
 
-Status: draft execution handoff for review; Phase 0 accepted at
-`aa627e94e9db4a680a30c8e3671a00e709a97320`
+Status: accepted and completed; Phase 1.1 checkpoint
+`fff8fc57552523e37a03dcf55a98466d471a9b8a`; final Phase 1 checkpoint
+`ee8f799bba40f2ed8caa57a4ef7e91726f2f4283`
 
 ## Authority and required reading
 
@@ -25,9 +26,9 @@ evidence.
 
 Work only in `C:\Users\dharm\src\ocaml` on
 `codex/plan9-native-io-foundation`. The accepted code predecessor is exactly
-`aa627e94e9db4a680a30c8e3671a00e709a97320`. The executing request must name
-the exact user-approved Phase 1 documentation-checkpoint `HEAD` created after
-review of these drafts.
+`aa627e94e9db4a680a30c8e3671a00e709a97320`. The reviewed Phase 1
+documentation-checkpoint `HEAD` is exactly
+`9369474ed38cf35bb0bf699e28d617a88c534e07`.
 
 Verify that the starting `HEAD` descends from the accepted predecessor with
 only the reviewed documentation changes after it, and that the index and

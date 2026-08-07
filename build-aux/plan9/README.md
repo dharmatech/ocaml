@@ -124,11 +124,13 @@ The wrapper honors `MAKE` if it is already set; otherwise it uses
 
 ## Phase 1 validation reference
 
-The accepted 2026-07-24 native build used exact staged index tree
-`7dee13d2b8c9fd159cb90d9834ea7100e5592e3b`, installed only under
-`/usr/glenda/lib/unix/ocaml-4.14.3-plan9-dev-001`, and left the production
-prefix unchanged. The focused environment suite passed, and an installed
-consumer built and ran with:
+The accepted 2026-08-07 Phase 1 qualification built commit
+`ee8f799bba40f2ed8caa57a4ef7e91726f2f4283` from the fresh native tree
+`/usr/glenda/src/ocaml-phase1-3-final-20260807-005`, installed only under
+`/usr/glenda/lib/unix/ocaml-4.14.3-plan9-dev-003`, and left the protected
+`/usr/glenda/lib/unix/ocaml-4.14.3` prefix absent and untouched. The complete
+focused suite passed, and a consumer outside the source, build, and install
+trees built and ran with:
 
 ```sh
 ocamlc -I +plan9 plan9.cma program.ml -o program

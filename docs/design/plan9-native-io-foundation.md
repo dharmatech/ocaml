@@ -1,8 +1,9 @@
 # OCaml Plan 9 native I/O foundation
 
 Status: accepted design; Phase 0 implemented, reviewed, and natively
-qualified at `aa627e94e9db4a680a30c8e3671a00e709a97320`; Phase 1 handoffs are
-drafted for review
+qualified at `aa627e94e9db4a680a30c8e3671a00e709a97320`; Phase 1 implemented,
+reviewed, and natively qualified at
+`ee8f799bba40f2ed8caa57a4ef7e91726f2f4283`; Phase 2 is next
 
 Source handoff:
 `C:\Users\dharm\src\caml9\docs\design\handoffs\ocaml-plan9-process-run-capture.md`
@@ -37,6 +38,18 @@ Plan 9-native I/O foundation before implementing capture.
 - Accepted Phase 0 and Phase 0.3 byte-I/O checkpoint:
   `aa627e94e9db4a680a30c8e3671a00e709a97320`. It is implemented, reviewed,
   natively qualified, committed, and pushed on the feature branch.
+- Reviewed Phase 1 umbrella documentation checkpoint:
+  `9369474ed38cf35bb0bf699e28d617a88c534e07`.
+- Accepted Phase 1.1 private-ML-regroup checkpoint:
+  `fff8fc57552523e37a03dcf55a98466d471a9b8a`.
+- Reviewed Phase 1.2 documentation checkpoint
+  `fab00d79c52990c5203845e38dd62da24e531a18` and accepted Phase 1.2
+  ownership-lifecycle checkpoint
+  `ff4a65b9b0b99c10725957fe318cebce95f0e968`.
+- Reviewed Phase 1.3 documentation checkpoint
+  `c676b7a506c569c7b7824beba687d96949c7711f` and accepted Phase 1 and Phase
+  1.3 byte-I/O checkpoint
+  `ee8f799bba40f2ed8caa57a4ef7e91726f2f4283`.
 - Preserved prototype branch:
   `codex/archive/plan9-process-capture-prototype` at
   `1eb780b1b8467d1b80b35102e40371b87dde5604`. It is intentionally
@@ -899,14 +912,14 @@ Phase 0 accepted or begin the architectural regroup before `Plan9.Fd`. Phase
 
 ### Phase 1: `Plan9.Fd`
 
-Review and implement the abstract ownership cell, native pipe construction,
-byte reads/writes, deterministic close, forged primitive validation,
-use-after-close behavior, alias close behavior, short I/O, interruption
-policy, and descriptor-leak tests.
+Implemented and qualified the abstract ownership cell, native pipe
+construction, byte reads/writes, deterministic close, forged primitive
+validation, use-after-close behavior, alias close behavior, short I/O,
+interruption policy, and descriptor-leak tests.
 
 #### Phase 1 execution subdivision
 
-Phase 1 is proposed as three sequential focused handoffs:
+Phase 1 was executed as three sequential focused handoffs:
 
 1. `docs/design/handoffs/plan9-native-fd-phase1-1-private-ml-regroup.md`
    establishes the private one-way ML module boundaries without a public API
@@ -918,9 +931,11 @@ Phase 1 is proposed as three sequential focused handoffs:
    adds typed byte I/O, publishes the complete public module, and performs
    final Phase 1 qualification.
 
-The shared draft roadmap is
-`docs/design/handoffs/plan9-native-fd-phase1.md`. These documents are not
-execution authority until reviewed and checkpointed with user approval.
+The shared roadmap is
+`docs/design/handoffs/plan9-native-fd-phase1.md`. Phase 1 completed its native
+qualification and acceptance gate at
+`ee8f799bba40f2ed8caa57a4ef7e91726f2f4283`. Phase 2 is the next design and
+execution layer.
 
 ### Phase 2: `Plan9.In_channel`
 

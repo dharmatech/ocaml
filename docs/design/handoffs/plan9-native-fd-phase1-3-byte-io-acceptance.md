@@ -1,9 +1,8 @@
 # Phase 1.3 `Plan9.Fd` byte I/O and final acceptance handoff
 
-Status: draft execution handoff for review; accepted Phase 1.2 predecessor
-`ff4a65b9b0b99c10725957fe318cebce95f0e968`, with reviewed Phase 1.2
-documentation predecessor
-`fab00d79c52990c5203845e38dd62da24e531a18`
+Status: accepted and completed; reviewed Phase 1.3 documentation checkpoint
+`c676b7a506c569c7b7824beba687d96949c7711f`; accepted Phase 1 and Phase 1.3
+checkpoint `ee8f799bba40f2ed8caa57a4ef7e91726f2f4283`
 
 ## Authority and required reading
 
@@ -35,9 +34,9 @@ Work only in `C:\Users\dharm\src\ocaml` on
 checkpoint is exactly
 `ff4a65b9b0b99c10725957fe318cebce95f0e968`, whose reviewed documentation
 predecessor is exactly
-`fab00d79c52990c5203845e38dd62da24e531a18`. The executing request must also
-name the exact user-approved Phase 1.3 documentation-checkpoint `HEAD` created
-after review of this refined handoff. Verify that the named starting `HEAD`
+`fab00d79c52990c5203845e38dd62da24e531a18`. The reviewed Phase 1.3
+documentation-checkpoint `HEAD` is exactly
+`c676b7a506c569c7b7824beba687d96949c7711f`. Verify that this starting `HEAD`
 descends from the accepted Phase 1.2 implementation with only the reviewed
 Phase 1.3 documentation delta after it. Then verify a clean index and worktree,
 expected branch and remote tracking, and no unrelated history.

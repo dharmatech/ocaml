@@ -1,7 +1,7 @@
 # Phase 1 `Plan9.Fd` roadmap
 
-Status: draft umbrella roadmap for review; Phase 0 accepted at
-`aa627e94e9db4a680a30c8e3671a00e709a97320`
+Status: accepted and completed roadmap; Phase 1 natively qualified at
+`ee8f799bba40f2ed8caa57a4ef7e91726f2f4283`
 
 ## Authority and required reading
 
@@ -9,9 +9,10 @@ The authoritative foundation is:
 
 `C:\Users\dharm\src\ocaml\docs\design\plan9-native-io-foundation.md`
 
-This roadmap divides Phase 1 into three sequential, independently reviewed
-and natively validated subphases. It is not implementation authority until the
-user reviews it and approves a documentation checkpoint.
+This roadmap divided Phase 1 into three sequential, independently reviewed
+and natively validated subphases. Its reviewed documentation checkpoint is
+`9369474ed38cf35bb0bf699e28d617a88c534e07`; the remainder is retained as the
+accepted execution contract.
 
 The focused execution handoffs are:
 
@@ -46,10 +47,9 @@ is unclear. If accepted documents genuinely conflict, stop and ask the user.
   `codex/archive/plan9-process-capture-prototype` at
   `1eb780b1b8467d1b80b35102e40371b87dde5604`.
 
-The accepted predecessor is exactly the Phase 0 checkpoint above. The Phase 1
-documentation checkpoint is intentionally unnamed in these draft documents;
-the executing request must identify the exact user-approved commit that first
-contains their reviewed form.
+The accepted predecessor is exactly the Phase 0 checkpoint above. The reviewed
+Phase 1 documentation checkpoint is exactly
+`9369474ed38cf35bb0bf699e28d617a88c534e07`.
 
 Before any subphase edits code, verify that:
 

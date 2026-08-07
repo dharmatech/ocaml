@@ -59,7 +59,9 @@ Keep the portable `Sys` and `Unix` APIs unchanged.
 - Use mainstream Git in the Windows checkout. Do not depend on git9 for the
   inner loop and never copy one implementation's `.git` directory into the
   other environment.
-- Keep work on `plan9-4.14.3-000` unless the user requests another branch.
+- Do not switch branches implicitly. Continue the checked-out project branch
+  and follow the design checkpoint named by the task unless the user requests
+  another branch.
 - Keep commits coherent and reviewable. Do not publish known-broken or
   partially validated runtime changes.
 - Coordinate work with the user step by step and inspect live state before VM

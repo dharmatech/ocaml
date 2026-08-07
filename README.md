@@ -71,10 +71,11 @@ from the rest of the system until you choose how to bind or expose it.
 Plan 9 builds include an ML-only `Plan9` library for programs that deliberately
 want native Plan 9 semantics. `Plan9.Env` reads and mutates the process's live
 `/env` namespace without changing the portable APE-backed `Sys` or `Unix`
-interfaces. `Plan9.Raw` provides the narrow exact environment-copy and exec
-operations, while `Plan9.Process` provides direct managed process execution
-and synchronous native wait ownership. The standard Plan 9 `ocamlrun`
-contains the required primitives.
+interfaces. `Plan9.Fd` provides explicitly owned native pipes and typed
+descriptor byte I/O with deterministic close. `Plan9.Raw` provides the narrow
+exact environment-copy and exec operations, while `Plan9.Process` provides
+direct managed process execution and synchronous native wait ownership. The
+standard Plan 9 `ocamlrun` contains the required primitives.
 
 An installed client uses the library normally:
 
