@@ -1,4 +1,4 @@
 interface:
   display_name: "OCaml Plan 9 VM Workflow"
   short_description: "Create and manage the OCaml Plan 9 VM lab"
-  default_prompt: "Use $ocaml-plan9-vm-workflow to establish the OCaml Plan 9 baseline checkpoint and mutable development VM."
+  default_prompt: "Use $ocaml-plan9-vm-workflow to inspect and safely manage the OCaml project's protected checkpoints and mutable development VMs."

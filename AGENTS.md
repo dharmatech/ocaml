@@ -29,7 +29,10 @@ Keep the portable `Sys` and `Unix` APIs unchanged.
 - Use `/mnt/term` for transfer, then copy build inputs to native Plan 9
   storage. Never copy `.git`.
 - Retain useful native build trees when incremental rebuilding is valuable.
-  Use a fresh clone when deliberately performing end-to-end validation.
+  For deliberate end-to-end validation, use a fresh, previously nonexistent
+  native source tree populated from the exact reviewed Windows source set as
+  specified by the owning handoff. Do not substitute a remote Git clone unless
+  that handoff explicitly requires one.
 - Agree on an install prefix with the user and do not accidentally overwrite a
   known-working compiler.
 - Keep the APE/GNU Make build lane unless the user decides to change it.

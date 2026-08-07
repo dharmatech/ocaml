@@ -29,8 +29,11 @@ an alternative.
   storage before configuring, building, or testing.
 - Never copy `.git` between Windows and Plan 9 and never build directly through
   `/mnt/term`.
-- Retain useful native build trees for incremental development. Use a fresh
-  clone only for deliberate end-to-end qualification.
+- Retain useful native build trees for incremental development. For deliberate
+  end-to-end qualification, use a fresh, previously nonexistent native source
+  tree populated from the exact reviewed Windows source set as specified by
+  the owning handoff. Do not substitute a remote Git clone unless that handoff
+  explicitly requires one.
 - Agree on an isolated installation prefix with the user. Do not overwrite a
   known-working compiler.
 - Keep the APE/GNU Make build lane unless the user chooses to change it.
@@ -53,7 +56,8 @@ an alternative.
 
 Use `$plan9-file-search` for guest file discovery, `$plan9-source` for Plan 9
 implementation source, `$plan9-docs` for manuals and papers, and `$plan9-git`
-when deliberately using git9 in a fresh-clone qualification.
+only when an owning handoff explicitly requires git9 or another native Git
+operation.
 
 Use `$ocaml-plan9-vm-workflow` when the task crosses into VM lifecycle,
 checkpoint, loopback-address, serial-log, or instance management.
