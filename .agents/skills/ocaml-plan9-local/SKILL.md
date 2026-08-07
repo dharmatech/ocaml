@@ -8,6 +8,15 @@ description: Use when transferring OCaml source to an already prepared Plan 9 gu
 Keep the Windows checkout authoritative while doing compiler, runtime, library,
 and installed-prefix work on native Plan 9 storage.
 
+## Required preflight
+
+Before running or diagnosing any native configure, build, test, or installation
+command, read `build-aux/plan9/README.md` completely from the current
+authoritative checkout. Treat it as the canonical build procedure and follow
+its shell setup exactly. Enter APE through `ape/psh`; do not substitute manual
+namespace binds or ad hoc command adapters. If a documented command cannot be
+used, stop and report the exact discrepancy before choosing an alternative.
+
 ## Boundaries
 
 - Authoritative editing repository: `C:\Users\dharm\src\ocaml`.
@@ -25,7 +34,8 @@ and installed-prefix work on native Plan 9 storage.
 
 ## Workflow
 
-1. Confirm the already prepared guest target and native destination paths.
+1. Complete the required README preflight, then confirm the already prepared
+   guest target and native destination paths.
 2. Use `$plan9-drawterm-windows` for transport and `/mnt/term` exchange.
 3. Transfer only the intended source inputs and verify them after copying to
    native storage.

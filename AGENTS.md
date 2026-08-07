@@ -15,6 +15,13 @@ Keep the portable `Sys` and `Unix` APIs unchanged.
 ## Source and build boundary
 
 - Treat `C:\Users\dharm\src\ocaml` as the authoritative editing repository.
+- Before running or diagnosing any Plan 9 configure, build, test, or
+  installation command, read `build-aux/plan9/README.md` completely from the
+  current authoritative checkout and follow its shell setup exactly. Enter
+  APE through `ape/psh`; do not approximate that environment with manual
+  namespace binds or ad hoc command adapters. If a documented command cannot
+  be used, stop and identify the exact discrepancy before substituting
+  anything.
 - Run configure, GNU Make, compiler, runtime, library, and installed-prefix
   tests on native Plan 9 storage, not Windows and not `/mnt/term`.
 - Use `/mnt/term` for transfer, then copy build inputs to native Plan 9
