@@ -9,6 +9,16 @@ plan9.cmx : \
     plan9_primitive.cmx \
     plan9.cmi
 plan9.cmi :
+plan9_fd.cmo : \
+    plan9_types.cmi \
+    plan9_primitive.cmi \
+    plan9_fd.cmi
+plan9_fd.cmx : \
+    plan9_types.cmx \
+    plan9_primitive.cmx \
+    plan9_fd.cmi
+plan9_fd.cmi : \
+    plan9_types.cmi
 plan9_primitive.cmo : \
     plan9_types.cmi \
     plan9_primitive.cmi

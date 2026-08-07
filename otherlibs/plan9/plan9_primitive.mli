@@ -16,6 +16,17 @@
 
     This interface is not installed. *)
 
+type descriptor_capability
+
+val descriptor_pipe :
+  unit ->
+  ((descriptor_capability * descriptor_capability),
+   Plan9_types.native_failure) result
+
+val descriptor_close :
+  descriptor_capability ->
+  (unit, Plan9_types.native_failure) result
+
 type native_pending = {
   native_process_id : int64;
   native_pid : int;

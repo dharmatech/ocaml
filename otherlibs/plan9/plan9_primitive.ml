@@ -12,6 +12,19 @@
 (*                                                                        *)
 (**************************************************************************)
 
+type descriptor_capability
+
+external descriptor_pipe :
+  unit ->
+  ((descriptor_capability * descriptor_capability),
+   Plan9_types.native_failure) result
+  = "caml_plan9_syscall_pipe"
+
+external descriptor_close :
+  descriptor_capability ->
+  (unit, Plan9_types.native_failure) result
+  = "caml_plan9_syscall_close"
+
 type native_pending = {
   native_process_id : int64;
   native_pid : int;

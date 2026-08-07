@@ -780,12 +780,19 @@ public compilation interface and stops qualification even if `plan9.mli`
 source bytes are unchanged.
 
 Also perform a target-scoped forced build from the repository root using the
-recorded GNU Make command shape `<GNU Make> -B -C tools dumpobj`. This is the
-Plan 9 `dumpobj$(EXE)` target actually defined in `tools/Makefile`; there is no
-root-level `tools/dumpobj` target to infer. Do not substitute a host-built tool
-or object. Preserve its complete build command and log, then invoke the newly
-built `tools/dumpobj` under the recorded new runtime against that freshly
-built `otherlibs/plan9/plan9_fd.cmo`.
+recorded GNU Make command shape
+`<GNU Make> -C tools -W make_opcodes.mll -W dumpobj.ml dumpobj`. The two `-W`
+operands force regeneration of the opcode input and recompilation of the
+disassembler without recursively forcing the retained compiler-interface
+graph. Do not use global `-B` for this target: `tools/.depend` names compiler
+CMIs reached through `VPATH`, so `-B` would rebuild those unrelated sibling
+interfaces in dependency-list order and can transiently mix incompatible CMI
+assumptions. This is the Plan 9 `dumpobj$(EXE)` target actually defined in
+`tools/Makefile`; there is no root-level `tools/dumpobj` target to infer. Do
+not substitute a host-built tool or object. Preserve its complete build
+command and log, then invoke the newly built `tools/dumpobj` under the
+recorded new runtime against that freshly built
+`otherlibs/plan9/plan9_fd.cmo`.
 
 Record the disassembly command, runtime, tool path/size/content hash, object
 path/size/content hash, exit status, and complete output. Keep the logs,
