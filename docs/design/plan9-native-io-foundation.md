@@ -78,8 +78,8 @@ Each requirement is one of the following:
 - **Non-goal**: excluded from this work.
 - **Acceptance criterion**: evidence required before a layer is accepted.
 
-The first implementation milestone is only the private syscall veneer and its
-proof. The broader module map is included so that this foundation does not
+The first implementation milestone was only the private syscall veneer and
+its proof. The broader module map is included so that this foundation does not
 accidentally force later layers into an unsuitable dependency structure.
 
 ## Motivation and end-to-end target
@@ -535,7 +535,8 @@ table and verify a single linked definition for every new primitive.
 `Plan9.Fd` is the first public layer after the veneer. It is a safe native
 descriptor abstraction, not a public raw integer API.
 
-The provisional minimal interface is:
+The Phase 1 interface accepted at
+`ee8f799bba40f2ed8caa57a4ef7e91726f2f4283` is:
 
 ```ocaml
 module Fd : sig
@@ -582,7 +583,7 @@ operation and exact captured error text. For an open handle and a valid range,
 `read` and `write` with `len:0` return `Ok 0` without a syscall; this shortcut
 does not turn an invalid or closed handle into success.
 
-The exact interface is reviewed again before the `Fd` implementation starts.
+This exact interface was reviewed and accepted during Phase 1.
 
 ## `Plan9.In_channel` target contract
 
