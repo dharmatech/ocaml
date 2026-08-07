@@ -950,6 +950,29 @@ Review and implement buffering, exact bytes, `input`, `input_line`,
 lines, embedded NUL, unterminated final lines, cleanup, and the explicit
 per-line and whole-input resource-bound policies deferred above.
 
+#### Proposed Phase 2 execution subdivision
+
+The Phase 2 design is prepared for review as four sequential focused
+handoffs:
+
+1. `docs/design/handoffs/plan9-native-in-channel-phase2-1-ownership-buffered-input.md`
+   establishes internal ownership transfer, channel state, buffering,
+   `input`, and deterministic close;
+2. `docs/design/handoffs/plan9-native-in-channel-phase2-2-bounded-lines.md`
+   adds bounded byte-exact `input_line` semantics;
+3. `docs/design/handoffs/plan9-native-in-channel-phase2-3-bounded-aggregates.md`
+   adds bounded `input_all` and `input_lines`; and
+4. `docs/design/handoffs/plan9-native-in-channel-phase2-4-public-acceptance.md`
+   publishes the complete module and performs final native and installed-
+   prefix acceptance.
+
+The shared proposed roadmap is
+`docs/design/handoffs/plan9-native-in-channel-phase2.md`. Each subphase owns
+its implementation and native validation and stops. Only Phase 2.4 may declare
+Phase 2 accepted or begin the design review for Phase 3. The exact API and
+resource-bound policies in these handoffs remain proposals until the complete
+Phase 2 documentation set is reviewed and accepted.
+
 ### Phase 3: process backend migration
 
 Add the remaining raw syscall entries required by current process operations,
