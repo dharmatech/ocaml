@@ -19,7 +19,7 @@
 #         locale throughout.
 export LC_ALL=C
 echo 'let builtin_exceptions = [|'
-tr -d '\r' < "$1" | sed -n -e 's|.*/\* \("[A-Za-z_]*"\) \*/$|  \1;|p'
+tr -d '\015' < "$1" | sed -n -e 's|.*/\* \("[A-Za-z_]*"\) \*/$|  \1;|p'
 echo '|]'
 
 echo 'let builtin_primitives = [|'

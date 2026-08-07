@@ -9,7 +9,7 @@ ocamlc -I +plan9 plan9.cma program.ml -o program
 
 That normal link does not require `-custom`, `-use-runtime`, C stubs, a C
 compiler, or a linker. On the Plan 9 target, the standard `ocamlrun` provides
-the native process primitives used by the ML-only archive.
+the native primitives used by the ML-only archive.
 
 For user-facing examples and the complete public API, see the
 [`Plan9` library reference](REFERENCE.md). This README records implementation
@@ -71,6 +71,61 @@ unrepresentable native length is rejected before native exec.
 There is no public raw waiter, integer rfork-mask operation, child-returning
 rfork path, `RFMEM`, `RFNOWAIT`, or `RFNOMNT` facility.
 
+## `Plan9.Fd`
+
+`Plan9.Fd.t` is an abstract shared owner of a native descriptor. It is not a
+descriptor integer and cannot be passed to `Stdlib`, `Sys`, `Unix`, or an
+ordinary OCaml channel. Copies alias one lifecycle: closing any public alias
+closes them all, and repeated close is idempotent. Cleanup is explicit and
+deterministic; the type has no descriptor-closing finalizer.
+
+`Plan9.Fd.pipe ()` returns two bidirectional Plan 9 pipe peers. It deliberately
+does not encode Unix-style read-end and write-end roles. A descriptor attached
+to a higher-level native owner permanently rejects public read, write, close,
+and reattachment through every retained alias, without exposing the private
+attachment mechanism.
+
+`read` and `write` accept only `bytes` and validate `pos` and `len` without an
+overflowing addition. The valid relationship is:
+
+```text
+pos >= 0
+len >= 0
+pos <= Bytes.length buffer
+len <= Bytes.length buffer - pos
+```
+
+After range and ownership validation, a zero-length call returns `Ok 0`
+without native work. A positive public call performs at most one native
+transfer. The private transfer boundary can therefore produce successful
+progress smaller than the logical `len`; callers complete a larger logical
+operation with later calls and honor every returned count.
+
+A positive short read is ordinary progress and `Ok 0` for a positive request
+is EOF. A successful read changes exactly its returned prefix in the caller's
+destination. Read errors leave that destination unchanged, but an interrupted
+native read may already have consumed an unknown amount of input, so automatic
+retry is unsafe.
+
+Writes never mutate their source. A native write count smaller than the exact
+count requested by that call is an `Other` error, and the wrapper never writes
+the remainder. Any failed or interrupted write is non-transactional and may
+have transferred an unknown prefix, so it likewise must not be retried
+automatically.
+
+Wrapper-generated errors use these exact public templates; braced fields are
+decimal substitutions:
+
+| Condition | Operation and kind | Message |
+| --- | --- | --- |
+| invalid range | invoked `Plan9.Fd.read` or `Plan9.Fd.write`; `Invalid_argument` | `invalid byte range: buffer length {buffer_length}, position {pos}, length {len}` |
+| malformed read result | `Plan9.Fd.read`; `Protocol_error` | `invalid descriptor read result: requested {requested} bytes, staging has {staging_length} bytes, returned count {count}` |
+| malformed write result | `Plan9.Fd.write`; `Protocol_error` | `invalid descriptor write result: requested {requested} bytes, returned count {count}` |
+| native short write | `Plan9.Fd.write`; `Other` | `descriptor write was short: requested {requested} bytes, wrote {written} bytes` |
+
+Native failures retain the high-level operation and exact captured Plan 9
+message.
+
 ## `Plan9.Process`
 
 `Plan9.Process.spawn` synthesizes literal `argv.(0)` from `program`;
@@ -117,11 +172,19 @@ On a configured Plan 9 source tree:
 "$MAKE" -C otherlibs/plan9 TEST_SUFFIX=phase1_manual_001 test
 ```
 
-The command runs five suites:
+The complete command includes:
 
 - the live `/env` suite covers absent, empty, scalar, list, unterminated,
   live reread, set, remove, invalid-name, invalid-element, arbitrary-byte, and
   `fn#...` behavior;
+- the descriptor fake-backend suite covers range and lifecycle precedence,
+  one-transfer chunking, EOF, short and malformed results, exact error
+  mapping, transferred ownership, callback reentrancy, lifecycle restoration,
+  close interaction, GC, and exception identity;
+- the native descriptor suite covers bidirectional peers, binary data,
+  caller-owned multi-call completion, preserved write boundaries, EOF,
+  zero-length behavior, alias and attachment ownership, GC, and repeated
+  descriptor cleanup;
 - a pure-ML fake backend deterministically covers argv0 synthesis,
   out-of-order routing, memoized waits, interruption, adoption, queue loss,
   foreign FIFO backpressure, queued-first `wait_any`, failed-closed malformed

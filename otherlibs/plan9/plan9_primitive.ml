@@ -25,6 +25,16 @@ external descriptor_close :
   (unit, Plan9_types.native_failure) result
   = "caml_plan9_syscall_close"
 
+external descriptor_read :
+  descriptor_capability -> int ->
+  ((bytes * int), Plan9_types.native_failure) result
+  = "caml_plan9_syscall_read"
+
+external descriptor_write :
+  descriptor_capability -> bytes -> int -> int ->
+  (int, Plan9_types.native_failure) result
+  = "caml_plan9_syscall_write"
+
 type native_pending = {
   native_process_id : int64;
   native_pid : int;

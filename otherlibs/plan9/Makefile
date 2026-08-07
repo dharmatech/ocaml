@@ -19,6 +19,7 @@ INSTALL_LIBDIR_SUFFIX=/plan9
 
 ENV_TEST_PROGRAM=tests/env_test$(EXE)
 FD_LIFECYCLE_TEST_PROGRAM=tests/fd_lifecycle_test$(EXE)
+FD_IO_TEST_PROGRAM=tests/fd_io_test$(EXE)
 PROCESS_STATE_TEST_PROGRAM=tests/process_state_test$(EXE)
 PROCESS_STATE_PRIMITIVES=tests/process_state_primitives
 PROCESS_PRIMITIVE_TEST_PROGRAM=tests/process_primitive_validation_test$(EXE)
@@ -41,6 +42,7 @@ RAW_SYSCALL_OBJECT=$(ROOTDIR)/runtime/plan9_syscall_amd64.$(O)
 SYSCALL_CAPABILITY_TEST_PROGRAM=tests/syscall_capability_test$(EXE)
 endif
 ML_TEST_PROGRAMS=$(ENV_TEST_PROGRAM) $(FD_LIFECYCLE_TEST_PROGRAM) \
+  $(FD_IO_TEST_PROGRAM) \
   $(PROCESS_STATE_TEST_PROGRAM) \
   $(PROCESS_PRIMITIVE_TEST_PROGRAM) $(PROCESS_NATIVE_TEST_PROGRAM) \
   $(SYSCALL_CAPABILITY_TEST_PROGRAM)
@@ -61,6 +63,7 @@ depend:
 test: all $(TEST_PROGRAMS)
 	$(NEW_OCAMLRUN) ./$(ENV_TEST_PROGRAM) '$(TEST_SUFFIX)'
 	$(NEW_OCAMLRUN) ./$(FD_LIFECYCLE_TEST_PROGRAM)
+	$(NEW_OCAMLRUN) ./$(FD_IO_TEST_PROGRAM)
 	$(OCAMLRUN) ./$(PROCESS_STATE_TEST_PROGRAM)
 	$(NEW_OCAMLRUN) ./$(PROCESS_PRIMITIVE_TEST_PROGRAM)
 	./$(PROCESS_FRAME_TEST_PROGRAM)
@@ -87,6 +90,9 @@ $(FD_LIFECYCLE_TEST_PROGRAM): tests/fd_lifecycle_test.ml \
 	$(CAMLC) -I . \
 	  plan9_types.cmo plan9_primitive.cmo plan9_fd.cmo \
 	  tests/fd_lifecycle_test.ml -o $@
+
+$(FD_IO_TEST_PROGRAM): tests/fd_io_test.ml plan9.cma plan9.cmi
+	$(CAMLC) -I . plan9.cma tests/fd_io_test.ml -o $@
 
 $(PROCESS_STATE_PRIMITIVES): $(ROOTDIR)/runtime/primitives
 	grep -v '^caml_plan9_' $< > $@.tmp

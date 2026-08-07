@@ -6,8 +6,8 @@ targeting Plan 9.
 
 Use `Sys` and `Unix` when portable Unix-compatible behavior is desired. Those
 modules retain their existing APE-backed semantics. Use `Plan9` when a program
-deliberately needs the live `/env` namespace, direct native execution, or
-native wait messages.
+deliberately needs native descriptor I/O, the live `/env` namespace, direct
+native execution, or native wait messages.
 
 ## Contents
 
@@ -15,6 +15,7 @@ native wait messages.
 - [Errors](#errors)
 - [Native wait messages](#native-wait-messages)
 - [`Plan9.Env`](#plan9env)
+- [`Plan9.Fd`](#plan9fd)
 - [`Plan9.Process`](#plan9process)
 - [`Plan9.Raw`](#plan9raw)
 - [Current scope and limitations](#current-scope-and-limitations)
@@ -176,6 +177,136 @@ let () =
 
 `Plan9.Env.get_exn name` returns the value, raises `Not_found` for absence,
 and raises `Plan9.Error error` for validation or I/O failure.
+
+## `Plan9.Fd`
+
+`Plan9.Fd` provides explicit native descriptor ownership and byte I/O:
+
+```ocaml
+module Fd : sig
+  type t
+
+  val pipe : unit -> ((t * t), error) result
+  val read : t -> bytes -> pos:int -> len:int -> (int, error) result
+  val write : t -> bytes -> pos:int -> len:int -> (int, error) result
+  val close : t -> (unit, error) result
+end
+```
+
+### Ownership and pipes
+
+`Fd.t` is abstract. It is neither a descriptor integer nor an ordinary OCaml
+channel, and it cannot adopt a descriptor owned by `Stdlib`, `Sys`, or `Unix`.
+Copies share one lifecycle rather than duplicating the native descriptor.
+Closing any public alias closes them all; repeated public close is idempotent.
+Cleanup is explicit and deterministic, with no descriptor-closing finalizer.
+
+`pipe ()` returns two bidirectional Plan 9 peers. The API does not label one
+peer read-only and the other write-only. A higher-level native owner can
+attach a descriptor internally; after attachment, every retained public alias
+permanently rejects read, write, close, and another attachment. The private
+attachment mechanism is not part of the installed interface.
+
+### Byte ranges and progress
+
+For both `read descriptor buffer ~pos ~len` and
+`write descriptor buffer ~pos ~len`, the range is valid exactly when:
+
+```text
+pos >= 0
+len >= 0
+pos <= Bytes.length buffer
+len <= Bytes.length buffer - pos
+```
+
+The subtraction-based last check avoids integer overflow. Range validation
+precedes lifecycle validation. A valid zero-length request still validates
+ownership, then returns `Ok 0` without native work.
+
+Each positive call performs at most one native transfer. A private transfer
+boundary may limit successful progress below the caller's logical `len`.
+Callers complete larger logical operations with additional calls while
+honoring every returned count; the boundary itself is not a public numeric
+promise.
+
+A positive read count is ordinary progress, including a native short read.
+`Ok 0` for a positive request is EOF. A successful read modifies exactly the
+returned prefix of the destination at `pos`; bytes before it and after it are
+unchanged. A read error leaves the destination unchanged. An interrupted read
+may nevertheless have consumed an unknown amount of native input, so it must
+not be retried automatically.
+
+A write never mutates its source. Successful progress smaller than logical
+`len` can reflect the wrapper boundary. A native count smaller than the exact
+count requested by that individual call is instead returned as an `Other`
+error, with no attempt to write the remainder. An interrupted or otherwise
+failed write is non-transactional and may have transferred an unknown prefix,
+so automatic retry is likewise unsafe.
+
+### Example
+
+The two peers can be assigned roles by an individual program:
+
+```ocaml
+let write_all descriptor source =
+  let rec loop position =
+    if position = Bytes.length source then Ok ()
+    else
+      let len = Bytes.length source - position in
+      match Plan9.Fd.write descriptor source ~pos:position ~len with
+      | Ok count when count > 0 -> loop (position + count)
+      | Ok _ -> assert false
+      | Error _ as error -> error
+  in
+  loop 0
+
+let () =
+  match Plan9.Fd.pipe () with
+  | Error error -> report_error error
+  | Ok (reader, writer) ->
+      let payload = Bytes.of_string "native\000bytes" in
+      begin match write_all writer payload with
+      | Error error -> report_error error
+      | Ok () -> ()
+      end;
+      begin match Plan9.Fd.close writer with
+      | Error error -> report_error error
+      | Ok () -> ()
+      end;
+      let destination = Bytes.create (Bytes.length payload) in
+      begin match
+        Plan9.Fd.read reader destination ~pos:0
+          ~len:(Bytes.length destination)
+      with
+      | Error error -> report_error error
+      | Ok 0 -> print_endline "EOF"
+      | Ok count ->
+          Printf.printf "read %d bytes\n" count
+      end;
+      begin match Plan9.Fd.close reader with
+      | Error error -> report_error error
+      | Ok () -> ()
+      end
+```
+
+The example explicitly handles every result and does not convert either peer
+to a standard channel or assume that one write completes an arbitrary logical
+payload.
+
+### Wrapper-generated errors
+
+Braced names in these exact messages are decimal substitutions:
+
+| Condition | Operation | Kind | Message |
+| --- | --- | --- | --- |
+| invalid range | invoked `Plan9.Fd.read` or `Plan9.Fd.write` | `Invalid_argument` | `invalid byte range: buffer length {buffer_length}, position {pos}, length {len}` |
+| malformed read result | `Plan9.Fd.read` | `Protocol_error` | `invalid descriptor read result: requested {requested} bytes, staging has {staging_length} bytes, returned count {count}` |
+| malformed write result | `Plan9.Fd.write` | `Protocol_error` | `invalid descriptor write result: requested {requested} bytes, returned count {count}` |
+| native short write | `Plan9.Fd.write` | `Other` | `descriptor write was short: requested {requested} bytes, wrote {written} bytes` |
+
+Native failures preserve the invoked high-level operation and exact captured
+Plan 9 message. Closed or attached handles and overlapping operations return
+structured `Invalid_argument` errors without native descriptor work.
 
 ## `Plan9.Process`
 
@@ -477,6 +608,8 @@ before native exec.
 - The containing `ocamlrun` remains APE-linked; the native `Plan9` process
   boundary does not make the whole executable APE-free.
 - `Sys`, `Unix`, `Sys.command`, and `Unix.putenv` are unchanged.
+- `Plan9.Fd` values cannot be converted to ordinary channels or descriptor
+  integers, and the module cannot adopt standard or foreign descriptors.
 - `Plan9.Process` exposes no shell or PATH-search convenience layer.
 - Process stdout supports only inheritance or a parent-opened truncate-file
   destination.

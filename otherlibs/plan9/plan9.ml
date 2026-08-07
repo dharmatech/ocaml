@@ -191,4 +191,6 @@ module Raw = struct
           (Plan9_types.error_of_native "Plan9.Raw.exec" native_error)
 end
 
+module Fd = Plan9_fd
+
 module Process = Plan9_process.Make (Plan9_primitive)

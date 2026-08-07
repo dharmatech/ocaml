@@ -129,6 +129,71 @@ module Raw : sig
       rejected before native exec. Success does not return. *)
 end
 
+module Fd : sig
+  (** Explicitly owned native Plan 9 descriptors.
+
+      Values are abstract shared ownership cells rather than descriptor
+      integers or ordinary OCaml channels. Copies alias the same lifecycle:
+      closing one alias closes them all. A descriptor attached to a higher-
+      level native owner permanently rejects public operations. Cleanup is
+      explicit and deterministic; this type has no descriptor-closing
+      finalizer. *)
+
+  type t
+
+  val pipe : unit -> ((t * t), error) result
+  (** [pipe ()] returns the two bidirectional peers of a native Plan 9 pipe.
+      The result does not assign Unix-style read-only and write-only roles. *)
+
+  val read :
+    t -> bytes -> pos:int -> len:int -> (int, error) result
+  (** [read descriptor destination ~pos ~len] performs at most one native
+      read into [destination] starting at [pos].
+
+      The range is valid exactly when [pos] and [len] are nonnegative,
+      [pos <= Bytes.length destination], and
+      [len <= Bytes.length destination - pos]. A valid zero-length operation
+      still checks ownership and then returns [Ok 0] without native work.
+
+      A positive result may be smaller than [len], either because the native
+      read was short or because the private transfer boundary limited this
+      call. [Ok 0] for a positive request is EOF. A successful read modifies
+      exactly the returned prefix at [pos]; every error leaves [destination]
+      unchanged. An interrupted read may nevertheless have consumed an
+      unknown amount of native input, so callers must not retry it
+      automatically. *)
+
+  val write :
+    t -> bytes -> pos:int -> len:int -> (int, error) result
+  (** [write descriptor source ~pos ~len] performs at most one native write
+      from [source] starting at [pos] and never mutates [source].
+
+      It uses the same valid-range and zero-length rules as [read]. A logical
+      request larger than the private transfer boundary can return successful
+      progress smaller than [len], for which the caller may issue a later
+      call. A native result smaller than the exact count requested by this
+      call is instead an [Other] error and is never retried. An interrupted or
+      otherwise failed write is non-transactional and may have transferred an
+      unknown prefix, so callers must not retry it automatically. *)
+
+  val close : t -> (unit, error) result
+  (** [close descriptor] deterministically closes the shared public owner.
+      Repeated public close is idempotent. A native close failure still makes
+      the shared handle terminal. *)
+
+  (** Invalid ranges are reported with the invoked operation,
+      [Invalid_argument], and
+      ["invalid byte range: buffer length {buffer_length}, position {pos}, length {len}"].
+      A malformed read result is [Protocol_error] with
+      ["invalid descriptor read result: requested {requested} bytes, staging has {staging_length} bytes, returned count {count}"].
+      A malformed write result is [Protocol_error] with
+      ["invalid descriptor write result: requested {requested} bytes, returned count {count}"].
+      A native short write is [Other] with
+      ["descriptor write was short: requested {requested} bytes, wrote {written} bytes"].
+      Braced names in these templates are decimal substitutions. Native errors
+      preserve the invoked high-level operation and captured native message. *)
+end
+
 module Process : sig
   (** Direct native Plan 9 process creation and synchronous wait ownership. *)
 
