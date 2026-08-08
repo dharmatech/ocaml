@@ -21,6 +21,17 @@ plan9_fd.cmx : \
     plan9_fd.cmi
 plan9_fd.cmi : \
     plan9_types.cmi
+plan9_in_channel.cmo : \
+    plan9_types.cmi \
+    plan9_fd.cmi \
+    plan9_in_channel.cmi
+plan9_in_channel.cmx : \
+    plan9_types.cmx \
+    plan9_fd.cmx \
+    plan9_in_channel.cmi
+plan9_in_channel.cmi : \
+    plan9_types.cmi \
+    plan9_fd.cmi
 plan9_primitive.cmo : \
     plan9_types.cmi \
     plan9_primitive.cmi

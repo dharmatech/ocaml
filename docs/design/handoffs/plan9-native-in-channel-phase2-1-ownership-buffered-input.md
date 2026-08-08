@@ -873,6 +873,24 @@ A changed, incomplete, live elsewhere, foreign, ambiguously owned, path-
 mismatched, provenance-mismatched, or prerequisite-incomplete retained tree
 stops before transfer.
 
+The common schema's server-device field is namespace-attachment-local rather
+than persistent file identity. When, and only when, a common-schema comparison
+in this handoff crosses either a recorded fresh CPU session/namespace
+attachment to the same live confirmed writable VM or a recorded clean halt and
+reboot of the same confirmed writable VM and disk, a uniform server-device
+renumbering is permitted: every baseline tuple must have the same old server
+type and device, every current tuple must have the same unchanged server type
+and one new device, and the device field must be the only tuple difference.
+Require exact equality of path, entry type, native mode, Qid type/version/path,
+ownership fields, length, and content hash for all entries; record both
+complete inventories, their hashes and entry counts, the old and new device
+values, and the exact VM, disk, address, session/namespace boundary, and, when
+applicable, clean-shutdown/reboot evidence. Within one unchanged session and
+namespace attachment, or if either inventory contains multiple server
+devices, require the device field to match exactly. Any mixed remapping,
+server-type change, other field difference, uncertain session or reboot
+identity, or unproved VM/disk continuity stops before transfer.
+
 For a new tree, select one exact canonical previously absent source/build root
 and apply the accepted Phase 1.3 common creation-and-ownership gate before
 population: prove disjointness from every protected or foreign prefix, source/
