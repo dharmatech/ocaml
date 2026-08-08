@@ -2,6 +2,9 @@
 
 Status: proposed focused handoff for review; implementation has not begun
 
+Reviewed Phase 2 documentation checkpoint: pending final documentation-content
+commit and follow-up checkpoint-recording commit.
+
 ## Authority and required reading
 
 Read completely before implementation:

@@ -3,6 +3,9 @@
 Status: proposed roadmap for review; no Phase 2 implementation is authorized
 until this roadmap and its focused handoffs are accepted
 
+Reviewed Phase 2 documentation checkpoint: pending final documentation-content
+commit and the follow-up checkpoint-recording commit described below.
+
 ## Authority and required reading
 
 The authoritative foundation is:
@@ -44,8 +47,13 @@ is unclear. If accepted documents genuinely conflict, stop and ask the user.
 The accepted implementation predecessor is Phase 1 at `ee8f799bba...`; the
 later documentation commits through `50f0229191...` clarify its completed
 status and remain part of the required starting history. Before implementation
-begins, record the exact reviewed Phase 2 documentation checkpoint in this
-roadmap and every focused handoff.
+begins, freeze and review the complete Phase 2 document set, then create a
+documentation-content commit. That commit's exact hash is the reviewed Phase 2
+documentation checkpoint. Because a commit cannot contain its own hash, record
+that hash in this roadmap and every focused handoff in a follow-up checkpoint-
+recording commit. The pending marker above is not a checkpoint, and no Phase 2
+implementation may begin until both commits are in the branch history and
+every recorded hash agrees.
 
 Before any subphase edits code, verify that:
 
@@ -322,9 +330,9 @@ minimum, final acceptance requires:
   transfer, while stale or losing prepared tokens never gain authority;
 - channel buffering preserves exact bytes across every refill split and
   serializes reentrant operations without stale-state overwrite;
-- `input` validates ranges first, performs no work for authorized zero length,
-  returns buffered data without another read, and performs at most one lower
-  read when empty;
+- `input` validates ranges first, performs no buffer movement or lower
+  descriptor/native work for authorized zero length, returns buffered data
+  without another read, and performs at most one lower read when empty;
 - line and aggregate functions satisfy the exact EOF/newline/NUL/CR/trailing-
   newline rules and enforce their documented default and caller-supplied
   bounds without overflow or unbounded drain;

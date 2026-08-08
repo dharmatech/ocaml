@@ -2,6 +2,9 @@
 
 Status: proposed focused handoff for review; implementation has not begun
 
+Reviewed Phase 2 documentation checkpoint: pending final documentation-content
+commit and follow-up checkpoint-recording commit.
+
 ## Authority and required reading
 
 Read completely before implementation:
@@ -31,7 +34,10 @@ Begin only from a reviewed, implemented, natively qualified, coherent Phase
 - no unrelated source, generated file, or native artifact in the Windows
   checkout; and
 - the retained native build tree, if reused, is halted, uniquely owned by this
-  project, and derived from the accepted Phase 2.1 source set.
+  project, has the exact canonical path and final common-schema identity
+  recorded for the accepted retained Phase 2.1 tree, uses the recorded
+  unchanged read-only dependency prefix, and is derived from the accepted
+  Phase 2.1 source set.
 
 If Phase 2.1 is uncommitted, unreviewed, partially qualified, or dirty, stop.
 Do not clean, stash, reset, switch, or infer acceptance.
