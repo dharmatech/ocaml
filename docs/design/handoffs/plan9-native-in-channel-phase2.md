@@ -1,10 +1,9 @@
 # Phase 2 `Plan9.In_channel` roadmap
 
-Status: proposed roadmap for review; no Phase 2 implementation is authorized
-until this roadmap and its focused handoffs are accepted
+Status: reviewed and accepted roadmap; Phase 2 implementation has not begun
 
-Reviewed Phase 2 documentation checkpoint: pending final documentation-content
-commit and the follow-up checkpoint-recording commit described below.
+Reviewed Phase 2 documentation checkpoint:
+`2b3c42ef032d41676abab721da6a70632b09443f`.
 
 ## Authority and required reading
 
@@ -51,9 +50,9 @@ begins, freeze and review the complete Phase 2 document set, then create a
 documentation-content commit. That commit's exact hash is the reviewed Phase 2
 documentation checkpoint. Because a commit cannot contain its own hash, record
 that hash in this roadmap and every focused handoff in a follow-up checkpoint-
-recording commit. The pending marker above is not a checkpoint, and no Phase 2
-implementation may begin until both commits are in the branch history and
-every recorded hash agrees.
+recording commit. The checkpoint above names that content commit; no Phase 2
+implementation may begin until the follow-up recording commit is also in the
+branch history and every recorded hash agrees.
 
 Before any subphase edits code, verify that:
 

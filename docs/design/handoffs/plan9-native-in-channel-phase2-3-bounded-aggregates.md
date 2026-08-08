@@ -1,9 +1,9 @@
 # Phase 2.3 bounded `Plan9.In_channel` aggregate input handoff
 
-Status: proposed focused handoff for review; implementation has not begun
+Status: reviewed and accepted focused handoff; implementation has not begun
 
-Reviewed Phase 2 documentation checkpoint: pending final documentation-content
-commit and follow-up checkpoint-recording commit.
+Reviewed Phase 2 documentation checkpoint:
+`2b3c42ef032d41676abab721da6a70632b09443f`.
 
 ## Authority and required reading
 
