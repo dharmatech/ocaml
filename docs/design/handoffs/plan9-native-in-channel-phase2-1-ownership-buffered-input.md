@@ -1,9 +1,51 @@
 # Phase 2.1 `Plan9.In_channel` ownership and buffered input handoff
 
-Status: reviewed and accepted focused handoff; implementation has not begun
+Status: accepted and completed; reviewed Phase 2 documentation checkpoint
+`2b3c42ef032d41676abab721da6a70632b09443f`; accepted Phase 2.1
+implementation checkpoint `d5fde712098a96259f986bb1bf301e931b4b63c5`
 
-Reviewed Phase 2 documentation checkpoint:
-`2b3c42ef032d41676abab721da6a70632b09443f`.
+## Accepted completion record
+
+Phase 2.1 was implemented, reviewed, and natively qualified from the exact
+Windows source set committed and pushed at
+`d5fde712098a96259f986bb1bf301e931b4b63c5`. Attempt 003 is the accepted
+qualification. Attempts 001 and 002 remain rejected evidence captures: the
+first wrote GNU Make output directly through `/mnt/term`, and the second
+encountered inconsistent stale compiler CMIs in a retained tree. Neither
+rejection identified a defect in the accepted source.
+
+The unique retained Phase 2.1 predecessor eligible for Phase 2.2 is:
+
+- native source/build root
+  `/usr/glenda/src/ocaml-phase2-1-qualification-20260808-003`;
+- unchanged read-only dependency prefix
+  `/usr/glenda/lib/unix/ocaml-4.14.3-plan9-dev-003`;
+- fresh consumer root
+  `/usr/glenda/tmp/ocaml-phase2-1-consumer-20260808-003`; and
+- host evidence root
+  `C:\Users\dharm\vm\ocaml\runs\phase2-1-qualification-20260808-001`,
+  with the accepted comparison and static audit under
+  `attempt-003-final-2`.
+
+The exact configure and world build, forced `Gc` and `Plan9` rebuilds,
+fresh-consumer compile and execution, primitive/import/runtime audits, and the
+complete Plan 9 suite with `TEST_SUFFIX=phase2_1_001` all returned zero. The
+public `plan9.cmi` remained the exact accepted Phase 1.3 artifact, the protected
+`/usr/glenda/lib/unix/ocaml-4.14.3` prefix remained absent, and no installation
+was performed.
+
+The retained tree belongs to the mutable project instance
+`C:\Users\dharm\vm\ocaml\dev`. On 2026-08-08 that exact WHPX instance was
+halted through Drawterm at its per-start lease `127.0.0.2` with
+`bind -b '#S' /dev; 9fs 9fat /dev/sd00/9fat; fshalt`. Drawterm returned zero
+after the guest reported `done halting`; QEMU PID `16124` and its exact
+P9QEMU/Python parent chain `23608 -> 7560 -> 26448 -> 16124` exited, all seven
+listeners closed, and no live QEMU process owned
+`C:\Users\dharm\vm\ocaml\dev\disk.qcow2`. The loopback lease is released and
+is not a persistent assignment.
+
+**Conclusion: accepted Phase 2.1 checkpoint; ready to begin Phase 2.2 from the
+retained predecessor above.**
 
 ## Authority and required reading
 

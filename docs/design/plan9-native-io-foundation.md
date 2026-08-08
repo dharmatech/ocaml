@@ -3,7 +3,9 @@
 Status: accepted design; Phase 0 implemented, reviewed, and natively
 qualified at `aa627e94e9db4a680a30c8e3671a00e709a97320`; Phase 1 implemented,
 reviewed, and natively qualified at
-`ee8f799bba40f2ed8caa57a4ef7e91726f2f4283`; Phase 2 is next
+`ee8f799bba40f2ed8caa57a4ef7e91726f2f4283`; Phase 2.1 implemented,
+reviewed, and natively qualified at
+`d5fde712098a96259f986bb1bf301e931b4b63c5`; Phase 2.2 is next
 
 Source handoff:
 `C:\Users\dharm\src\caml9\docs\design\handoffs\ocaml-plan9-process-run-capture.md`
@@ -50,6 +52,11 @@ Plan 9-native I/O foundation before implementing capture.
   `c676b7a506c569c7b7824beba687d96949c7711f` and accepted Phase 1 and Phase
   1.3 byte-I/O checkpoint
   `ee8f799bba40f2ed8caa57a4ef7e91726f2f4283`.
+- Reviewed Phase 2 documentation checkpoint
+  `2b3c42ef032d41676abab721da6a70632b09443f`, recorded in the handoffs at
+  `8e05aa2f5d1a9b9275cc1a7079c9b2d4f6173840`.
+- Accepted Phase 2.1 ownership and buffered-input checkpoint:
+  `d5fde712098a96259f986bb1bf301e931b4b63c5`.
 - Preserved prototype branch:
   `codex/archive/plan9-process-capture-prototype` at
   `1eb780b1b8467d1b80b35102e40371b87dde5604`. It is intentionally
@@ -940,8 +947,10 @@ Phase 1 was executed as three sequential focused handoffs:
 The shared roadmap is
 `docs/design/handoffs/plan9-native-fd-phase1.md`. Phase 1 completed its native
 qualification and acceptance gate at
-`ee8f799bba40f2ed8caa57a4ef7e91726f2f4283`. Phase 2 is the next design and
-execution layer.
+`ee8f799bba40f2ed8caa57a4ef7e91726f2f4283`. Phase 2.1 completed its native
+qualification and acceptance gate at
+`d5fde712098a96259f986bb1bf301e931b4b63c5`; Phase 2.2 is the next execution
+layer.
 
 ### Phase 2: `Plan9.In_channel`
 
@@ -950,10 +959,9 @@ Review and implement buffering, exact bytes, `input`, `input_line`,
 lines, embedded NUL, unterminated final lines, cleanup, and the explicit
 per-line and whole-input resource-bound policies deferred above.
 
-#### Proposed Phase 2 execution subdivision
+#### Phase 2 execution subdivision
 
-The Phase 2 design is prepared for review as four sequential focused
-handoffs:
+The reviewed Phase 2 design defines four sequential focused handoffs:
 
 1. `docs/design/handoffs/plan9-native-in-channel-phase2-1-ownership-buffered-input.md`
    establishes internal ownership transfer, channel state, buffering,
@@ -966,12 +974,12 @@ handoffs:
    publishes the complete module and performs final native and installed-
    prefix acceptance.
 
-The shared proposed roadmap is
+The shared accepted roadmap is
 `docs/design/handoffs/plan9-native-in-channel-phase2.md`. Each subphase owns
 its implementation and native validation and stops. Only Phase 2.4 may declare
 Phase 2 accepted or begin the design review for Phase 3. The exact API and
-resource-bound policies in these handoffs remain proposals until the complete
-Phase 2 documentation set is reviewed and accepted.
+resource-bound policies were reviewed and accepted at documentation checkpoint
+`2b3c42ef032d41676abab721da6a70632b09443f` and remain the execution contract.
 
 ### Phase 3: process backend migration
 

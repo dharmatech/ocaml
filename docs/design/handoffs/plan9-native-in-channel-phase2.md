@@ -1,6 +1,7 @@
 # Phase 2 `Plan9.In_channel` roadmap
 
-Status: reviewed and accepted roadmap; Phase 2 implementation has not begun
+Status: reviewed and accepted roadmap; Phase 2.1 accepted and completed at
+`d5fde712098a96259f986bb1bf301e931b4b63c5`; Phase 2.2 is next
 
 Reviewed Phase 2 documentation checkpoint:
 `2b3c42ef032d41676abab721da6a70632b09443f`.
@@ -11,7 +12,7 @@ The authoritative foundation is:
 
 `C:\Users\dharm\src\ocaml\docs\design\plan9-native-io-foundation.md`
 
-This roadmap proposes four sequential, independently reviewed and natively
+This roadmap defines four sequential, independently reviewed and natively
 validated subphases:
 
 1. `plan9-native-in-channel-phase2-1-ownership-buffered-input.md`;
@@ -39,6 +40,12 @@ is unclear. If accepted documents genuinely conflict, stop and ask the user.
   `ee8f799bba40f2ed8caa57a4ef7e91726f2f4283`.
 - Phase 1 documentation/status base from which this design was prepared:
   `50f022919198c24ca4e5697b79b1cd52411da83e`.
+- Reviewed Phase 2 documentation checkpoint:
+  `2b3c42ef032d41676abab721da6a70632b09443f`.
+- Phase 2 documentation-checkpoint recording commit:
+  `8e05aa2f5d1a9b9275cc1a7079c9b2d4f6173840`.
+- Accepted Phase 2.1 ownership and buffered-input checkpoint:
+  `d5fde712098a96259f986bb1bf301e931b4b63c5`.
 - Preserved rejected capture prototype:
   `codex/archive/plan9-process-capture-prototype` at
   `1eb780b1b8467d1b80b35102e40371b87dde5604`.
@@ -179,13 +186,15 @@ Phase 2.4: installed public API and complete Phase 2 acceptance
 
 ### Phase 2.1: ownership and buffered input
 
-Starting from accepted Phase 1, add the uninstalled `Plan9_in_channel`
-module, allocate its channel, fixed private scratch buffer, and enclosing
-success before attachment commit, then implement deterministic owner close
-and caller-buffer `input`. Serialize reentrant operations at the channel
-layer, preserve all unread buffer bytes, issue at most one lower read when a
-public `input` call begins with an empty buffer, and never cache EOF as a
-permanent property of a descriptor.
+Completed and natively qualified at
+`d5fde712098a96259f986bb1bf301e931b4b63c5`. Starting from accepted Phase 1,
+this subphase added the uninstalled `Plan9_in_channel` module, allocated its
+channel, fixed private scratch buffer, and enclosing success before attachment
+commit, and implemented deterministic owner close and caller-buffer `input`.
+It serializes reentrant operations at the channel layer, preserves all unread
+buffer bytes, issues at most one lower read when a public `input` call begins
+with an empty buffer, and does not cache EOF as a permanent descriptor
+property.
 
 The module enters `plan9.cma` in dependency order but is not re-exported from
 `Plan9`. Focused fake-backend and native tests validate transfer, aliases,

@@ -1,6 +1,8 @@
 # Phase 2.2 bounded `Plan9.In_channel.input_line` handoff
 
-Status: reviewed and accepted focused handoff; implementation has not begun
+Status: reviewed and accepted focused handoff; Phase 2.2 implementation has
+not begun; accepted Phase 2.1 predecessor
+`d5fde712098a96259f986bb1bf301e931b4b63c5`
 
 Reviewed Phase 2 documentation checkpoint:
 `2b3c42ef032d41676abab721da6a70632b09443f`.
@@ -28,7 +30,8 @@ Begin only from a reviewed, implemented, natively qualified, coherent Phase
 2.1 checkpoint. Verify and record:
 
 - branch `codex/plan9-native-io-foundation`;
-- exact `HEAD` and accepted Phase 2.1 commit;
+- exact `HEAD` and accepted Phase 2.1 commit
+  `d5fde712098a96259f986bb1bf301e931b4b63c5`;
 - clean worktree and index;
 - expected upstream and recent log;
 - no unrelated source, generated file, or native artifact in the Windows
