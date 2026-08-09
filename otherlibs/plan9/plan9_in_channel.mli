@@ -40,6 +40,9 @@ module type S = sig
   val input :
     t -> bytes -> pos:int -> len:int ->
     (int, Plan9_types.error) result
+  val input_line :
+    ?max_bytes:int -> t ->
+    (string option, Plan9_types.error) result
 end
 
 module Make (Fd : Descriptor) : S with type fd = Fd.t
