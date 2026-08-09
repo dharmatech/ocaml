@@ -1,33 +1,32 @@
 # Phase 2.2 bounded `Plan9.In_channel.input_line` handoff
 
-Status: refined focused handoff under renewed review; Phase 2.2 implementation
-has not begun; accepted Phase 2.1 predecessor
+Status: reviewed and checkpointed focused handoff; Phase 2.2 implementation has
+not begun; accepted Phase 2.1 predecessor
 `d5fde712098a96259f986bb1bf301e931b4b63c5`
 
 Reviewed Phase 2 umbrella documentation checkpoint:
 `2b3c42ef032d41676abab721da6a70632b09443f`.
 
-Refined Phase 2.2 documentation checkpoint: not yet recorded.
+Refined Phase 2.2 documentation-content checkpoint:
+`89f7a7e3f13fdb567f6e7da8fddad2776dd01996`.
 
 ## Refined documentation checkpoint gate
 
 The umbrella checkpoint above remains the accepted Phase 2 design base, but it
-predates the focused refinements in this handoff. Phase 2.2 implementation must
-not begin from an uncommitted or merely conversational version of this file.
-After the renewed review is complete:
+predates the focused refinements in this handoff. The refined documentation-
+content checkpoint above contains the substantive final review result. Its
+exact hash is recorded in this handoff, the Phase 2 roadmap, and the foundation
+through the required follow-up checkpoint-recording commit. Phase 2.2
+implementation may begin only when the starting `HEAD` contains:
 
-1. create one documentation-content commit containing the exact final refined
-   handoff and its agreed foundation/roadmap consistency edits;
-2. record that content commit's exact hash in this handoff, the Phase 2
-   roadmap, and the foundation through a follow-up checkpoint-recording commit;
-   and
-3. require the implementation starting `HEAD` to contain both commits with a
-   clean worktree and index.
+1. the documentation-content commit named above;
+2. its follow-up checkpoint-recording commit; and
+3. a clean worktree and index.
 
 The follow-up commit cannot serve as the content checkpoint because a commit
-cannot contain its own hash. Until the `not yet recorded` line above is
-replaced by the exact documentation-content hash and the recording commit is
-in branch history, the start gate is closed.
+cannot contain its own hash. The checkpoint above names the content commit; no
+Phase 2.2 implementation may begin until the recording commit is also in branch
+history and all three recorded content hashes agree exactly.
 
 ## Authority and required reading
 

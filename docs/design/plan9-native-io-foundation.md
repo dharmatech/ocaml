@@ -7,6 +7,9 @@ reviewed, and natively qualified at
 reviewed, and natively qualified at
 `d5fde712098a96259f986bb1bf301e931b4b63c5`; Phase 2.2 is next
 
+Refined Phase 2.2 documentation-content checkpoint:
+`89f7a7e3f13fdb567f6e7da8fddad2776dd01996`.
+
 Source handoff:
 `C:\Users\dharm\src\caml9\docs\design\handoffs\ocaml-plan9-process-run-capture.md`
 

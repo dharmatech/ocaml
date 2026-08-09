@@ -6,6 +6,9 @@ Status: reviewed and accepted roadmap; Phase 2.1 accepted and completed at
 Reviewed Phase 2 documentation checkpoint:
 `2b3c42ef032d41676abab721da6a70632b09443f`.
 
+Refined Phase 2.2 documentation-content checkpoint:
+`89f7a7e3f13fdb567f6e7da8fddad2776dd01996`.
+
 ## Authority and required reading
 
 The authoritative foundation is:
