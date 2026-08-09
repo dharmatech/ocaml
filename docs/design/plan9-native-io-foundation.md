@@ -603,7 +603,7 @@ This exact interface was reviewed and accepted during Phase 1.
 `Stdlib.in_channel`. Its concepts intentionally resemble OCaml's `In_channel`
 module while its backend and semantics are native Plan 9.
 
-The provisional initial interface is:
+The accepted Phase 2 target interface is:
 
 ```ocaml
 module In_channel : sig
@@ -612,9 +612,13 @@ module In_channel : sig
   val of_fd : Fd.t -> (t, error) result
   val close : t -> (unit, error) result
   val input : t -> bytes -> pos:int -> len:int -> (int, error) result
-  val input_line : t -> (string option, error) result
-  val input_all : t -> (string, error) result
-  val input_lines : t -> (string list, error) result
+  val input_line :
+    ?max_bytes:int -> t -> (string option, error) result
+  val input_all :
+    ?max_bytes:int -> t -> (string, error) result
+  val input_lines :
+    ?max_bytes:int -> ?max_line_bytes:int ->
+    t -> (string list, error) result
 end
 ```
 
@@ -640,17 +644,20 @@ Carriage return and embedded NUL are ordinary bytes. Empty input yields no
 lines, a single newline yields one empty line, a trailing newline does not add
 an extra line, and an unterminated final line is returned.
 
-**Deferred decision.** Before Phase 2, choose an explicit resource-bound policy
-for `input_line`, `input_all`, and `input_lines`. A single unterminated line can
-otherwise grow without bound, and an OCaml representability limit alone is not
-a resource-bound policy. The provisional signatures above may gain optional
-per-line or whole-input bounds or another explicit policy, but ordinary bounded
-use should remain concise. Tests must cover limit behavior and deterministic
-cleanup.
+**Resolved Phase 2 decision.** The reviewed Phase 2 documentation checkpoint
+`2b3c42ef032d41676abab721da6a70632b09443f` selected explicit finite defaults
+with caller-supplied finite overrides: `input_line` defaults to `1_048_576`
+bytes of line body, while `input_all` and `input_lines` default to `16_777_216`
+bytes of total input and `input_lines` also defaults to `1_048_576` bytes per
+line. Each bound is validated in the inclusive range zero through
+`Sys.max_string_length`. Line bounds exclude the optional newline terminator;
+aggregate total accounting follows the accepted Phase 2 handoffs. Tests must
+cover exact-limit, excess, stream-position, error, and deterministic cleanup
+behavior.
 
 Seeking, positions, length, text-mode translation, standard-input adoption,
-and file opening are deferred to the file/stat layers. The exact interface is
-reviewed before this layer begins.
+and file opening are deferred to the file/stat layers. The exact interface was
+reviewed before this layer began.
 
 ## Process migration and capture target
 
@@ -957,7 +964,7 @@ layer.
 Review and implement buffering, exact bytes, `input`, `input_line`,
 `input_all`, `input_lines`, EOF cases, arbitrarily split delimiters, long
 lines, embedded NUL, unterminated final lines, cleanup, and the explicit
-per-line and whole-input resource-bound policies deferred above.
+per-line and whole-input resource-bound policies resolved above.
 
 #### Phase 2 execution subdivision
 

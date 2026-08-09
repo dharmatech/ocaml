@@ -131,7 +131,7 @@ omitted. Carriage return and embedded NUL are ordinary bytes. Empty input has
 no lines, one newline has one empty line, a trailing newline adds no extra
 line, and an unterminated final line is returned.
 
-### Proposed resource policy
+### Accepted resource policy
 
 Every materializing helper is bounded by default and permits a caller to
 choose a different explicit finite bound:
